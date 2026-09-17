@@ -16,9 +16,10 @@ if (!poolPubkeyStr || !amountInStr || !minOutStr) {
 const pool = new PublicKey(poolPubkeyStr);
 const swapBaseForQuote = swapBaseForQuoteStr === "true";
 
-// USDC has 6 decimals
-const amountInBN = new BN(Math.floor(parseFloat(amountInStr) * 1e6));
-const minOutBN = new BN(Math.floor(parseFloat(minOutStr) * 1e6));
+// Quote decimals env-driven (9 = wSOL devnet, 6 = USDC mainnet).
+const QUOTE_EXP = process.env.QUOTE_DECIMALS === "SIX" ? 1e6 : 1e9;
+const amountInBN = new BN(Math.floor(parseFloat(amountInStr) * QUOTE_EXP));
+const minOutBN = new BN(Math.floor(parseFloat(minOutStr) * QUOTE_EXP));
 
 // Load keypair from env
 const keypairPath = process.env.KEYPAIR_PATH;
@@ -44,6 +45,8 @@ async function main() {
       referralTokenAccount: null,
     });
 
+    tx.feePayer = owner.publicKey;
+    tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
     tx.sign(owner);
     const txSig = await connection.sendRawTransaction(tx.serialize(), {
       skipPreflight: false,

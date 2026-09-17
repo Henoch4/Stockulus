@@ -17,6 +17,25 @@ import * as fs from "fs";
 const connection = new Connection(process.env.RPC_URL || "https://api.devnet.solana.com", "confirmed");
 const partnerService = new PartnerService(connection, "confirmed");
 
+// Quote mint + decimals are env-driven: devnet has no Circle USDC, so we use
+// wSOL (9dp) on devnet; mainnet uses USDC (6dp). See .env QUOTE_MINT/QUOTE_DECIMALS.
+const QUOTE_MINT = new PublicKey(
+  process.env.QUOTE_MINT || "So11111111111111111111111111111111111111112"
+);
+const QUOTE_DECIMALS =
+  process.env.QUOTE_DECIMALS === "SIX" ? TokenDecimal.SIX : TokenDecimal.NINE;
+// Base decimals + token program env-driven: xStocks are Token-2022/8dp
+// (mainnet AAPLx: TokenzQ..., scaled-UI + transferHook + pausable).
+// Devnet mock mirrors decimals; transferHook path is a mainnet step (Phase C).
+const BASE_DECIMALS =
+  process.env.BASE_DECIMALS === "SIX"
+    ? TokenDecimal.SIX
+    : process.env.BASE_DECIMALS === "NINE"
+      ? TokenDecimal.NINE
+      : TokenDecimal.EIGHT;
+const TOKEN_TYPE =
+  process.env.TOKEN_TYPE === "SPL" ? TokenType.SPLToken : TokenType.Token2022;
+
 // Usage: node dist/create_config.js <regime_scale>
 const regimeScale = parseFloat(process.argv[2] || "1.0");
 
@@ -36,14 +55,14 @@ function stockCurve(regimeScale: number) {
   const exponential = regimeScale <= 0.9;
   const sqrtPrices = createSqrtPrices(
     [0.000001, 0.0000012, 0.000002, 0.00001],
-    TokenDecimal.SIX,
-    TokenDecimal.SIX
+    BASE_DECIMALS,
+    QUOTE_DECIMALS
   );
   return buildCurveWithCustomSqrtPrices({
     token: {
-      tokenType: TokenType.SPLToken,
-      tokenBaseDecimal: TokenDecimal.SIX,
-      tokenQuoteDecimal: TokenDecimal.SIX,
+      tokenType: TOKEN_TYPE,
+      tokenBaseDecimal: BASE_DECIMALS,
+      tokenQuoteDecimal: QUOTE_DECIMALS,
       tokenAuthorityOption: TokenAuthorityOption.PartnerUpdateAuthority,
       totalTokenSupply: 1_000_000_000,
       leftover: 1000,
@@ -95,7 +114,7 @@ async function main() {
     const config = Keypair.generate();
 
     const curveConfig = stockCurve(regimeScale);
-    const quoteMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC
+    const quoteMint = QUOTE_MINT; // env-driven (wSOL devnet / USDC mainnet)
 
     const tx = await partnerService.createConfig({
       config: config.publicKey,
@@ -106,6 +125,8 @@ async function main() {
       ...curveConfig,
     });
 
+    tx.feePayer = partner.publicKey;
+    tx.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
     tx.sign(partner, config);
     const txSig = await connection.sendRawTransaction(tx.serialize(), {
       skipPreflight: false,

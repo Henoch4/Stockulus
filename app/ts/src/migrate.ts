@@ -36,6 +36,8 @@ async function main() {
       dammConfig,
     });
 
+    transaction.feePayer = payer.publicKey;
+    transaction.recentBlockhash = (await connection.getLatestBlockhash("confirmed")).blockhash;
     transaction.sign(payer);
     const txSig = await connection.sendRawTransaction(transaction.serialize(), {
       skipPreflight: false,

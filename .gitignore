@@ -22,6 +22,7 @@ dist/
 agent_keypair.json
 deployer_keypair.json
 program-keypair.json
+mint-*.json
 
 # --- Rust / Anchor build artifacts ---
 /target/
