@@ -75,8 +75,12 @@ jobs:
           printf '%s' "$DEPLOYER_KEY_B64" | base64 --decode > config/ci/deployer.json
           chmod 600 config/ci/deployer.json
 
-          solana-keygen verify config/ci/deployer.json
-          echo "deployer_id=$(solana-keygen pubkey config/ci/deployer.json)" >> "$GITHUB_OUTPUT"
+          # Validate the decoded file is a usable keypair (verify needs
+          # <pubkey> <keypair> — bare `verify <file>` resolves a nonexistent path).
+          DEPLOYER_ID="$(solana-keygen pubkey config/ci/deployer.json)"
+          solana-keygen verify "$DEPLOYER_ID" config/ci/deployer.json
+
+          echo "deployer_id=$DEPLOYER_ID" >> "$GITHUB_OUTPUT"
 
       - name: Generate program keypairs (ephemeral per deploy)
         # New program IDs every run — update .env from the artifact after each
