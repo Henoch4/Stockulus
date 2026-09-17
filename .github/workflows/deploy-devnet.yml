@@ -9,8 +9,9 @@ permissions:
   contents: read
 
 env:
-  # Agave >=2.1 bundles Cargo with lockfile v4 support (2.0.x fails on v4 locks).
-  SOLANA_VERSION: "2.1.20"
+  # Agave 3.x ships platform-tools with Cargo >= 1.85 (edition 2024 capable).
+  # 2.1.x bundles Cargo 1.79, which chokes on zeroize_derive 1.5.0 / edition2024.
+  SOLANA_VERSION: "3.1.10"
   CLUSTER: "devnet"
 
 jobs:
@@ -42,6 +43,14 @@ jobs:
           solana-keygen --version
           cargo --version
           cargo-build-sbf --version || true
+
+          # Fail fast: Rust edition 2024 (zeroize_derive 1.5.0+) needs Cargo >= 1.85.
+          # Gate on the CLI-bundled cargo (platform-tools download lazily on first build).
+          cargo_version="$(cargo version | sed -E 's/[^0-9]*([0-9]+\.[0-9]+).*/\1/')"
+          if [[ "$(printf '%s\n' "$cargo_version" "1.85" | sort -V | head -n1)" != "1.85" ]]; then
+            echo "Cargo ${cargo_version} is too old; Cargo 1.85+ required for edition 2024"
+            exit 1
+          fi
 
       - name: Generate deployer and program keypairs
         id: deployer
