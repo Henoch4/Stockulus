@@ -63,12 +63,16 @@ async def main():
     curator = CuratorAgent(audit_log=None)
     integrity = DataIntegrityGate(staleness_threshold_s=30.0)
 
+    # DRY_RUN defaults to true: live swaps only on explicit DRY_RUN=false.
+    # (Placeholder perp/borrow/div data must never reach a real pool.)
+    dry_run = os.getenv("DRY_RUN", "true").strip().lower() != "false"
+
     agent = AutonomousTradingAgent(
         xstocks_client=xstocks,
         meteora_executor=meteora,
         risk_gate=risk_gate,
         onchain_logger=audit,
-        dry_run=False,  # Set True to skip swaps
+        dry_run=dry_run,
         max_position_usd=100,
         agent_id="delta-zero-demo",
         integrity_gate=integrity,

@@ -149,6 +149,25 @@ CURATOR_PROFILE_PATTERNS = {
 }
 
 
+# ─── DBC pool resolution (env; H4 fills real pubkeys post create_pool) ───
+
+import os as _os
+
+
+def _dbc_pool_for_asset(asset: str) -> str:
+    """Map xSTOCK symbol → DBC pool pubkey from env (DBC_POOL_XAAPL/...).
+
+    Returns a placeholder when unset — downstream swap fails closed (no pool,
+    no trade) instead of routing to a wrong pool. Never guess a pubkey.
+    """
+    sym = asset.upper()
+    # "xAAPL" → DBC_POOL_XAAPL first, DBC_POOL_AAPL fallback; bare "AAPL" → DBC_POOL_AAPL.
+    pool = _os.getenv(f"DBC_POOL_{sym}") or _os.getenv(f"DBC_POOL_{sym.lstrip('X')}", "")
+    if not pool or pool == "PLACEHOLDER_POOL_PUBKEY":
+        return f"{asset}-DBC"
+    return pool
+
+
 # ─── Trading Cycle Result ───
 
 @dataclass
@@ -384,6 +403,8 @@ class AutonomousTradingAgent:
         decision_id = f"dec_{uuid.uuid4().hex[:12]}"
         payload = {
             "decision_id": decision_id,
+            # Single-leg (non-package) decision: None hashes to bytes32(0) on-chain.
+            "package_id": None,
             "asset": asset,
             "signal": ensemble_sig.direction,
             "strategy": ensemble_sig.strategy,
@@ -465,7 +486,9 @@ class AutonomousTradingAgent:
         side = "buy" if sig.direction == "LONG" else "sell"
         size_usd = self.max_position_usd * (sig.confidence_bps / 10000.0)
         return OrderRequest(
-            inst_id=f"{sig.asset}-DBC",  # DBC pool pubkey
+            # Live: DBC pool pubkey from env (DBC_POOL_XAAPL/...). Unset =
+            # placeholder that fails closed downstream (no pool → no swap).
+            inst_id=_dbc_pool_for_asset(sig.asset),
             side=side,
             order_type="market",
             size=f"{size_usd:.2f}",
