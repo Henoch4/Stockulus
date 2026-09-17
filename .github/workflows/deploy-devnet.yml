@@ -20,10 +20,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Solana/Agave CLI (bundles cargo-build-sbf + SBF toolchain)
+      - name: Install Solana/Agave CLI
+        shell: bash
         run: |
-          sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_VERSION}/install)"
-          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+          set -Eeuo pipefail
+
+          curl --fail --show-error --location \
+            "https://release.anza.xyz/v${SOLANA_VERSION}/install" | sh
+
+          SOLANA_BIN="$HOME/.local/share/solana/install/active_release/bin"
+
+          if [[ ! -x "$SOLANA_BIN/solana-keygen" ]]; then
+            echo "Solana CLI installation failed"
+            find "$HOME/.local/share/solana" -maxdepth 5 -type f -name 'solana-keygen' -print
+            exit 1
+          fi
+
+          echo "$SOLANA_BIN" >> "$GITHUB_PATH"
+          export PATH="$SOLANA_BIN:$PATH"
+
+          solana --version
+          solana-keygen --version
 
       - name: Generate deployer keypair
         id: deployer
