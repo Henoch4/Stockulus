@@ -66,6 +66,58 @@ jobs:
           solana-keygen new --no-bip39-passphrase -s -o config/ci/trading_vault_kp.json --force
           echo "deployer_id=$(solana-keygen pubkey config/ci/deployer.json)" >> "$GITHUB_OUTPUT"
 
+      - name: Synchronize generated program IDs
+        # declare_id! must be valid base58 AND match the deploy keypair.
+        # Placeholders satisfy neither — inject the ephemeral pubkeys pre-build.
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          TRADE_AUDIT_ID="$(solana-keygen pubkey config/ci/trade_audit_kp.json)"
+          TRADING_VAULT_ID="$(solana-keygen pubkey config/ci/trading_vault_kp.json)"
+
+          python3 - "$TRADE_AUDIT_ID" "$TRADING_VAULT_ID" <<'PY'
+          import pathlib
+          import re
+          import sys
+
+          trade_audit_id, trading_vault_id = sys.argv[1:]
+
+          replacements = {
+              pathlib.Path("programs/trade_audit_trail/src/lib.rs"): trade_audit_id,
+              pathlib.Path("programs/trading_vault/src/lib.rs"): trading_vault_id,
+          }
+
+          for path, program_id in replacements.items():
+              text = path.read_text()
+              updated, count = re.subn(
+                  r'declare_id!\("[^"]+"\)',
+                  f'declare_id!("{program_id}")',
+                  text,
+                  count=1,
+              )
+              if count != 1:
+                  raise SystemExit(f"Could not find declare_id! in {path}")
+              path.write_text(updated)
+
+          anchor = pathlib.Path("Anchor.toml")
+          text = anchor.read_text()
+          text = re.sub(
+              r'(?m)^trade_audit_trail\s*=\s*"[^"]+"$',
+              f'trade_audit_trail = "{trade_audit_id}"',
+              text,
+          )
+          text = re.sub(
+              r'(?m)^trading_vault\s*=\s*"[^"]+"$',
+              f'trading_vault = "{trading_vault_id}"',
+              text,
+          )
+          anchor.write_text(text)
+          PY
+
+          echo "trade_audit_trail: $TRADE_AUDIT_ID"
+          echo "trading_vault: $TRADING_VAULT_ID"
+
       - name: Build trade_audit_trail (SBF)
         run: cargo build-sbf --manifest-path programs/trade_audit_trail/Cargo.toml
       - name: Build trading_vault (SBF)
