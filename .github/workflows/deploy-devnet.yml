@@ -54,19 +54,40 @@ jobs:
             exit 1
           fi
 
-      - name: Generate deployer and program keypairs
+      - name: Restore funded deployer keypair
+        # Persistent pre-funded devnet wallet (repo secret DEVNET_DEPLOYER_KEY_B64,
+        # base64 of a solana-keygen JSON). Ephemeral per-run deployers always hit
+        # the rate-limited public faucet — this removes airdrops from CI entirely.
+        # config/ci/*.json is gitignored and excluded from artifacts.
         id: deployer
+        shell: bash
+        env:
+          DEPLOYER_KEY_B64: ${{ secrets.DEVNET_DEPLOYER_KEY_B64 }}
+        run: |
+          set -Eeuo pipefail
+
+          test -n "${DEPLOYER_KEY_B64:-}" || {
+            echo "DEVNET_DEPLOYER_KEY_B64 is not configured (repo Settings → Secrets → Actions)"
+            exit 1
+          }
+
+          mkdir -p config/ci
+          printf '%s' "$DEPLOYER_KEY_B64" | base64 --decode > config/ci/deployer.json
+          chmod 600 config/ci/deployer.json
+
+          solana-keygen verify config/ci/deployer.json
+          echo "deployer_id=$(solana-keygen pubkey config/ci/deployer.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Generate program keypairs (ephemeral per deploy)
+        # New program IDs every run — update .env from the artifact after each
+        # deploy. For stable devnet addresses, persist these as secrets too
+        # (same base64 pattern) instead of generating here.
         shell: bash
         run: |
           set -Eeuo pipefail
           mkdir -p config/ci
-          # All three keypairs are ephemeral runner state (config/ci/*.json is
-          # gitignored and excluded from artifacts). The program keypairs were
-          # missing entirely — deploy steps reference them below.
-          solana-keygen new --no-bip39-passphrase -s -o config/ci/deployer.json --force
           solana-keygen new --no-bip39-passphrase -s -o config/ci/trade_audit_kp.json --force
           solana-keygen new --no-bip39-passphrase -s -o config/ci/trading_vault_kp.json --force
-          echo "deployer_id=$(solana-keygen pubkey config/ci/deployer.json)" >> "$GITHUB_OUTPUT"
 
       - name: Synchronize generated program IDs
         # declare_id! must be valid base58 AND match the deploy keypair.
@@ -125,65 +146,31 @@ jobs:
       - name: Build trading_vault (SBF)
         run: cargo build-sbf --manifest-path programs/trading_vault/Cargo.toml
 
-      - name: Fund deployer (balance-verified, fail-fast)
-        # Public devnet faucet is rate-limited and NOT a guaranteed funding
-        # source: request small amounts, verify balance, FAIL before deploy
-        # instead of deploying broke. Optional PRIVATE_DEVNET_RPC_URL repo
-        # secret (e.g. Helius/Triton devnet endpoint) is tried first when set.
+      - name: Verify deployer funding (no faucet, fail-fast)
+        # No airdrop attempts: the deployer is pre-funded off-run. Top it up
+        # via https://faucet.solana.com or a transfer when this check fails.
         shell: bash
-        env:
-          PRIVATE_DEVNET_RPC_URL: ${{ secrets.PRIVATE_DEVNET_RPC_URL }}
         run: |
           set -Eeuo pipefail
 
           DEPLOYER_KEY="config/ci/deployer.json"
           REQUIRED_SOL=3
 
-          RPCS=()
-          if [[ -n "${PRIVATE_DEVNET_RPC_URL:-}" ]]; then
-            RPCS+=("$PRIVATE_DEVNET_RPC_URL")
-          fi
-          RPCS+=("$SOLANA_RPC_URL")
+          balance="$(
+            solana balance \
+              --keypair "$DEPLOYER_KEY" \
+              --url "$SOLANA_RPC_URL" |
+            awk '{print $1}'
+          )"
 
-          funded=0
+          echo "Deployer balance: ${balance:-0} SOL"
 
-          for rpc in "${RPCS[@]}"; do
-            echo "Using devnet RPC: $rpc"
-            solana config set --url "$rpc"
-
-            for attempt in 1 2 3 4 5; do
-              balance="$(
-                solana balance \
-                  --keypair "$DEPLOYER_KEY" \
-                  --url "$rpc" |
-                awk '{print $1}'
-              )"
-
-              echo "Current deployer balance: ${balance:-0} SOL"
-
-              if awk -v balance="${balance:-0}" \
-                    -v required="$REQUIRED_SOL" \
-                    'BEGIN { exit !(balance >= required) }'; then
-                funded=1
-                break 2
-              fi
-
-              # Smaller requests are less likely to hit faucet limits.
-              solana airdrop 1 \
-                --keypair "$DEPLOYER_KEY" \
-                --url "$rpc" || true
-
-              sleep 20
-            done
-          done
-
-          if [[ "$funded" != 1 ]]; then
-            echo "Unable to fund deployer wallet (faucet rate-limited)"
-            solana balance --keypair "$DEPLOYER_KEY"
+          if ! awk -v balance="${balance:-0}" \
+                   -v required="$REQUIRED_SOL" \
+                   'BEGIN { exit !(balance >= required) }'; then
+            echo "Deployer requires at least ${REQUIRED_SOL} SOL on ${SOLANA_RPC_URL}"
             exit 1
           fi
-
-          solana balance --keypair "$DEPLOYER_KEY"
 
       - name: Deploy trade_audit_trail
         run: |
