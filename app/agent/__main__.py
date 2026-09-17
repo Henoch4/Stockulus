@@ -2,7 +2,11 @@ import asyncio
 import json
 import os
 from dotenv import load_dotenv
-load_dotenv()
+from pathlib import Path
+
+# Explicit .env path (repo root): bare load_dotenv() relies on CWD search,
+# which silently misses on some Windows setups → config loads empty.
+load_dotenv(dotenv_path=Path(__file__).resolve().parent.parent.parent / ".env")
 
 from app.agent import AutonomousTradingAgent
 from app.agent.execution.risk_gate import RiskGate, DurableDailyCounters

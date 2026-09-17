@@ -55,10 +55,15 @@ class ClawpumpClient:
         return resp.json()
 
     async def list_agents(self) -> list[dict]:
-        """GET /api/v1/agents — list all agents."""
+        """GET /api/v1/agents — list all agents (unwrap {"agents"/"data": [...]})."""
         resp = await self._client.get(f"{self.base}/v1/agents")
         resp.raise_for_status()
-        return resp.json()
+        data = resp.json()
+        if isinstance(data, dict):
+            for key in ("agents", "data", "items"):
+                if isinstance(data.get(key), list):
+                    return data[key]
+        return data if isinstance(data, list) else []
 
     # --- Token launch ---
 
