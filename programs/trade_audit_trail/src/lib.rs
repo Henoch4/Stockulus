@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 
-declare_id!("STCKauditXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+declare_id!("516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS");
 
 #[program]
 pub mod trade_audit_trail {

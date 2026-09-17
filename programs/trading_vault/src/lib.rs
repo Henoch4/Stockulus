@@ -1,7 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Mint};
 
-declare_id!("STCKvaultXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+declare_id!("Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF");
 
 #[program]
 pub mod trading_vault {

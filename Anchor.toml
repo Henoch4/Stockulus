@@ -3,5 +3,5 @@ default = []
 seeds = []
 
 [programs.devnet]
-trade_audit_trail = "STCKauditXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
-trading_vault = "STCKvaultXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+trade_audit_trail = "516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS"
+trading_vault = "Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF"
