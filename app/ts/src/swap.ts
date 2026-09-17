@@ -26,7 +26,9 @@ if (!keypairPath) {
   console.error("KEYPAIR_PATH not set");
   process.exit(1);
 }
-const secret = Buffer.from(fs.readFileSync(keypairPath, "utf8").trim(), "hex");
+const rawKey = fs.readFileSync(keypairPath, "utf8").trim();
+// solana-keygen JSON array or raw hex — accept both.
+const secret = Buffer.from(rawKey.startsWith("[") ? JSON.parse(rawKey) : Buffer.from(rawKey, "hex"));
 const owner = Keypair.fromSecretKey(secret);
 
 async function main() {
