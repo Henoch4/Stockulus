@@ -27,6 +27,15 @@ IDL = {
     "name": "trade_audit_trail",
     "instructions": [
         {
+            "name": "initialize",
+            "accounts": [
+                {"name": "agentState", "isMut": True, "isSigner": False},
+                {"name": "agent", "isMut": True, "isSigner": True},
+                {"name": "systemProgram", "isMut": False, "isSigner": False},
+            ],
+            "args": [],
+        },
+        {
             "name": "setRiskParams",
             "accounts": [
                 {"name": "agentState", "isMut": True, "isSigner": False},
@@ -44,7 +53,8 @@ IDL = {
             "accounts": [
                 {"name": "agentState", "isMut": True, "isSigner": False},
                 {"name": "decision", "isMut": True, "isSigner": False},
-                {"name": "agent", "isMut": False, "isSigner": True},
+                {"name": "agent", "isMut": True, "isSigner": True},
+                {"name": "systemProgram", "isMut": False, "isSigner": False},
             ],
             "args": [
                 {"name": "decisionId", "type": "[u8; 32]"},
@@ -62,6 +72,7 @@ IDL = {
             "name": "recordExecution",
             "accounts": [
                 {"name": "decision", "isMut": True, "isSigner": False},
+                {"name": "agentState", "isMut": True, "isSigner": False},
                 {"name": "agent", "isMut": False, "isSigner": True},
             ],
             "args": [
@@ -134,12 +145,76 @@ def _to_u64_1e8(value: float) -> int:
     return int(round(value * 1e8))
 
 
+def _ctx(accounts: dict):
+    """Build an anchorpy Context (0.21 requires the object, not a plain dict).
+
+    Account keys are snake_cased client-side (agentState -> agent_state)
+    regardless of IDL casing.
+    """
+    import re
+
+    from anchorpy import Context as _Context
+
+    def _snake(name: str) -> str:
+        return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
+
+    return _Context(accounts={_snake(k): v for k, v in accounts.items()}, signers=[])
+
+
 def _derive_agent_state_pda(program_id: Pubkey, agent: Pubkey) -> tuple[Pubkey, int]:
     return Pubkey.find_program_address([b"agent_state", bytes(agent)], program_id)
 
 
 def _derive_decision_pda(program_id: Pubkey, decision_id: bytes) -> tuple[Pubkey, int]:
     return Pubkey.find_program_address([b"decision", decision_id], program_id)
+
+
+def _idl_with_address(idl: dict, program_id: str) -> dict:
+    """Return a copy of the hand-shaped IDL with metadata.address set.
+
+    anchorpy's Idl.from_json validates the Anchor IDL-JSON schema; our const
+    carries only the subset we call, so fill structural defaults here rather
+    than in the const (keeps the const readable, failures loud at connect).
+    """
+    import copy
+
+    full = copy.deepcopy(idl)
+
+    def _normalize(node: object) -> object:
+        # anchorpy 0.21 IDL parser rejects the "[u8; 32]" and "pubkey" shorthands —
+        # normalize to {"array": ["u8", 32]} and "publicKey" (args + account fields).
+        # Events use "fields", not "data".
+        if isinstance(node, dict):
+            out = {}
+            for k, v in node.items():
+                if k == "type" and v == "[u8; 32]":
+                    out[k] = {"array": ["u8", 32]}
+                elif k == "type" and v == "pubkey":
+                    out[k] = "publicKey"
+                elif k == "data" and isinstance(v, list):
+                    out["fields"] = _normalize(v)
+                else:
+                    out[k] = _normalize(v)
+            return out
+        if isinstance(node, list):
+            return [_normalize(v) for v in node]
+        return node
+
+    full = _normalize(full)
+    # anchorpy 0.21 events require explicit "index" flags on the event AND each field.
+    for ev in full.get("events", []):
+        if isinstance(ev, dict):
+            ev.setdefault("index", False)
+            for fld in ev.get("fields", []):
+                if isinstance(fld, dict):
+                    fld.setdefault("index", False)
+    full.setdefault("types", [])
+    full.setdefault("errors", [])
+    full.setdefault("constants", [])
+    full.setdefault("events", full.get("events", []))
+    meta = full.setdefault("metadata", {})
+    meta.setdefault("address", program_id)
+    return full
 
 
 class SolanaAuditLogger:
@@ -166,7 +241,12 @@ class SolanaAuditLogger:
         self._client = AsyncClient(self.rpc_url, commitment=self.commitment)
         wallet = Wallet(self.agent_keypair)
         self._provider = Provider(self._client, wallet)
-        self._program = Program(IDL, self.program_id, self._provider)
+        # anchorpy >=0.20 needs a parsed Idl object, not a raw dict.
+        # Hand-shaped IDL below must stay in anchor IDL-JSON schema.
+        from anchorpy import Idl as _Idl
+
+        idl_obj = _Idl.from_json(json.dumps(_idl_with_address(IDL, str(self.program_id))))
+        self._program = Program(idl_obj, self.program_id, self._provider)
         logger.info(f"Connected to TradeAuditTrail at {self.program_id} as {self.agent_address}")
 
     async def close(self):
@@ -195,6 +275,21 @@ class SolanaAuditLogger:
     def _risk_hash_bytes(self, risk_hash: str) -> bytes:
         return bytes.fromhex(risk_hash[2:] if risk_hash.startswith("0x") else risk_hash)
 
+    async def initialize(self) -> str:
+        """Create the agent_state PDA (once per agent; fails if already initialized)."""
+        from solders.pubkey import Pubkey as _Pubkey
+
+        agent_state_pda, _ = _derive_agent_state_pda(self.program_id, self.agent_address)
+        tx = await self.program.rpc["initialize"](
+            ctx=_ctx({
+                "agentState": agent_state_pda,
+                "agent": self.agent_address,
+                "systemProgram": _Pubkey.from_string("11111111111111111111111111111111"),
+            }),
+        )
+        logger.info(f"Agent state initialized: {tx}")
+        return tx
+
     async def set_risk_params(
         self,
         max_position_usd: float,
@@ -204,18 +299,15 @@ class SolanaAuditLogger:
     ) -> str:
         """Set non-overridable risk parameters on-chain (tightening only)."""
         agent_state_pda, _ = _derive_agent_state_pda(self.program_id, self.agent_address)
-        tx = await self.program.rpc["setRiskParams"](
+        tx = await self.program.rpc["set_risk_params"](
             _to_u64_1e8(max_position_usd),
             _to_u64_1e8(max_daily_loss_usd),
             max_leverage_bps,
             min_confidence_bps,
-            ctx={
-                "accounts": {
-                    "agentState": agent_state_pda,
-                    "agent": self.agent_address,
-                },
-                "signers": [self.agent_keypair],
-            },
+            ctx=_ctx({
+                "agentState": agent_state_pda,
+                "agent": self.agent_address,
+            }),
         )
         logger.info(f"Risk params set: {tx}")
         return tx
@@ -233,6 +325,8 @@ class SolanaAuditLogger:
         risk_hash: str,
     ) -> str:
         """Log a trade decision on-chain. MUST succeed before execution."""
+        from solders.pubkey import Pubkey as _Pubkey
+
         decision_id_bytes = self._decision_id_bytes(decision_id)
         package_id_bytes = self._package_id_bytes(package_id)
         risk_hash_bytes = self._risk_hash_bytes(risk_hash)
@@ -240,7 +334,7 @@ class SolanaAuditLogger:
         agent_state_pda, _ = _derive_agent_state_pda(self.program_id, self.agent_address)
         decision_pda, _ = _derive_decision_pda(self.program_id, decision_id_bytes)
 
-        tx = await self.program.rpc["logDecision"](
+        tx = await self.program.rpc["log_decision"](
             list(decision_id_bytes),
             list(package_id_bytes),
             asset,
@@ -250,14 +344,13 @@ class SolanaAuditLogger:
             _to_u64_1e8(entry_price),
             _to_u64_1e8(size_usd),
             list(risk_hash_bytes),
-            ctx={
-                "accounts": {
-                    "agentState": agent_state_pda,
-                    "decision": decision_pda,
-                    "agent": self.agent_address,
-                },
-                "signers": [self.agent_keypair],
-            },
+            ctx=_ctx({
+                "agentState": agent_state_pda,
+                "decision": decision_pda,
+                "agent": self.agent_address,
+                # decision PDA is init+payer=agent → system program required.
+                "systemProgram": _Pubkey.from_string("11111111111111111111111111111111"),
+            }),
         )
         logger.info(f"Decision logged: {tx} (decision={decision_id}, asset={asset})")
         return tx
@@ -273,49 +366,42 @@ class SolanaAuditLogger:
         """Record execution result on-chain."""
         decision_id_bytes = self._decision_id_bytes(decision_id)
         decision_pda, _ = _derive_decision_pda(self.program_id, decision_id_bytes)
+        agent_state_pda, _ = _derive_agent_state_pda(self.program_id, self.agent_address)
 
-        tx = await self.program.rpc["recordExecution"](
+        tx = await self.program.rpc["record_execution"](
             list(decision_id_bytes),
             _to_u64_1e8(fill_price),
             _to_u64_1e8(fill_size_usd),
             _to_u64_1e8(fee_usd),
             success,
-            ctx={
-                "accounts": {
-                    "decision": decision_pda,
-                    "agent": self.agent_address,
-                },
-                "signers": [self.agent_keypair],
-            },
+            ctx=_ctx({
+                "decision": decision_pda,
+                "agentState": agent_state_pda,
+                "agent": self.agent_address,
+            }),
         )
         logger.info(f"Execution recorded: {tx}")
         return tx
 
     async def activate_kill_switch(self, reason: str) -> str:
         agent_state_pda, _ = _derive_agent_state_pda(self.program_id, self.agent_address)
-        tx = await self.program.rpc["activateKillSwitch"](
+        tx = await self.program.rpc["activate_kill_switch"](
             reason,
-            ctx={
-                "accounts": {
-                    "agentState": agent_state_pda,
-                    "agent": self.agent_address,
-                },
-                "signers": [self.agent_keypair],
-            },
+            ctx=_ctx({
+                "agentState": agent_state_pda,
+                "agent": self.agent_address,
+            }),
         )
         logger.warning(f"On-chain kill switch activated: {reason}")
         return tx
 
     async def deactivate_kill_switch(self) -> str:
         agent_state_pda, _ = _derive_agent_state_pda(self.program_id, self.agent_address)
-        tx = await self.program.rpc["deactivateKillSwitch"](
-            ctx={
-                "accounts": {
-                    "agentState": agent_state_pda,
-                    "agent": self.agent_address,
-                },
-                "signers": [self.agent_keypair],
-            },
+        tx = await self.program.rpc["deactivate_kill_switch"](
+            ctx=_ctx({
+                "agentState": agent_state_pda,
+                "agent": self.agent_address,
+            }),
         )
         logger.info("On-chain kill switch deactivated")
         return tx

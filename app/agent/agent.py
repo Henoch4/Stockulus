@@ -432,10 +432,14 @@ class AutonomousTradingAgent:
         # Execute via Meteora DBC (skip in dry_run)
         if not self.dry_run:
             try:
+                # order.size is USD notional; DBC swap takes QUOTE-token units.
+                # Convert via SOL price (env SOL_PRICE_USD; Pyth feed is Phase C).
+                sol_price = float(_os.getenv("SOL_PRICE_USD", "150.0") or 150.0)
+                amount_quote = float(order.size) / sol_price if sol_price > 0 else 0.0
                 swap_result = self.meteora.swap(
                     pool=order.inst_id,  # DBC pool pubkey
-                    amount_in=float(order.size),
-                    min_out=float(order.size) * 0.99,
+                    amount_in=amount_quote,
+                    min_out=amount_quote * 0.99,
                     swap_base_for_quote=(order.side == "sell"),
                 )
                 exec_result = {

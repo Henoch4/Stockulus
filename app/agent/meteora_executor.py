@@ -27,7 +27,7 @@ class MeteoraExecutor:
 
     def __init__(self, rpc_url: str, ts_dir: str | None = None, keypair_path: str | None = None):
         self.rpc_url = rpc_url
-        self.ts_dir = Path(ts_dir) if ts_dir else Path(__file__).resolve().parent.parent.parent / "ts"
+        self.ts_dir = Path(ts_dir) if ts_dir else Path(__file__).resolve().parent.parent / "ts"
         self.keypair_path = keypair_path
 
     def _run_ts(self, script: str, *args: str) -> dict[str, Any]:
