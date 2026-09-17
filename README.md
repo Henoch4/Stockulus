@@ -4,7 +4,7 @@
 
 ## Project Overview
 
-Stockulus is a delta-neutral carry vault for tokenized equities on Solana. The core thesis: tokenized stocks (xAAPL, xTSLA, xNVDA via xStocks/Backpack) trade 24/7 with a persistent basis vs spot + dividend yield — a structural carry opportunity.
+Stockulus is a delta-neutral carry vault for tokenized equities on Solana. The core thesis: tokenized stocks (AAPLx, TSLAx, NVDAx via xStocks/Backpack) trade 24/7 with a persistent basis vs spot + dividend yield — a structural carry opportunity.
 
 ### Tracks Entered
 - **Main Track ($100K)**: Delta-neutral tokenized stock carry vault with on-chain audit trail

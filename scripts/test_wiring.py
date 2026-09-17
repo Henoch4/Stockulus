@@ -25,7 +25,7 @@ async def main():
     rg = RiskGate(
         max_position_usd=100, max_daily_loss_usd=20, max_daily_trades=10,
         max_leverage=1.0, min_confidence_bps=7000,
-        allowed_assets=["xAAPL", "xTSLA", "xNVDA"],
+        allowed_assets=["AAPLx", "TSLAx", "NVDAx"],
         counters_durable=True, counter_store=counters,
     )
     me = MeteoraExecutor("https://api.devnet.solana.com")
@@ -38,7 +38,7 @@ async def main():
     print("agent instantiated OK")
     print("active patterns:", ag.pattern_registry.get_active_patterns())
 
-    result = await ag.run_trading_cycle(["xAAPL", "xTSLA", "xNVDA"])
+    result = await ag.run_trading_cycle(["AAPLx", "TSLAx", "NVDAx"])
     print("status:", result.status)
     print("signals:", len(result.signals))
     print("decisions:", len(result.decisions))

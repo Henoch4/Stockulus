@@ -15,7 +15,7 @@ Phase C = money-gated futures (audit, legal, mainnet capital, mobile) — parked
 > → every decision signed + logged on-chain BEFORE execution → DBC pools auto-tuned by volatility regime
 > → agent launchable via Clawpump.
 
-**Locked demo scope:** xAAPL, xTSLA, xNVDA. Quote USDC. Devnet risk: $100 max position, $20 daily loss, 1x leverage.
+**Locked demo scope:** AAPLx, TSLAx, NVDAx. Quote USDC. Devnet risk: $100 max position, $20 daily loss, 1x leverage.
 Vault demo: **90/10 Principal-Protected** (90% yield vault + 10% yield buys OTM calls). Covered call deferred.
 
 ---
@@ -264,7 +264,7 @@ GET /public/oracles/{sym} → oracle PDAs per network
 GET /public/proof-of-reserves/{sym} → backing check for dashboard
 ```
 Solana specifics: SPL Token-2022 + Scaled UI extension. Raw balance constant; apply multiplier off-chain.
-Demo symbols: xAAPL, xTSLA, xNVDA (resolve exact mints via `get_solana_mint` at runtime, cache JSON for offline demo).
+Demo symbols: AAPLx, TSLAx, NVDAx (resolve exact mints via `get_solana_mint` at runtime, cache JSON for offline demo).
 Backpack/Sunrise (https://docs.sunrise.xyz/equities/backpack-securities): 1:1 redeemable real shares narrative
 ("backed + convertible via Backpack, tradable 24/7 via Sunrise"). No API key for demo; link conversion flow in README.
 

@@ -155,14 +155,14 @@ import os as _os
 
 
 def _dbc_pool_for_asset(asset: str) -> str:
-    """Map xSTOCK symbol → DBC pool pubkey from env (DBC_POOL_XAAPL/...).
+    """Map xSTOCK symbol → DBC pool pubkey from env (DBC_POOL_AAPLX/...).
 
     Returns a placeholder when unset — downstream swap fails closed (no pool,
     no trade) instead of routing to a wrong pool. Never guess a pubkey.
     """
     sym = asset.upper()
-    # "xAAPL" → DBC_POOL_XAAPL first, DBC_POOL_AAPL fallback; bare "AAPL" → DBC_POOL_AAPL.
-    pool = _os.getenv(f"DBC_POOL_{sym}") or _os.getenv(f"DBC_POOL_{sym.lstrip('X')}", "")
+    # "AAPLx" → DBC_POOL_AAPLX first, DBC_POOL_AAPL fallback.
+    pool = _os.getenv(f"DBC_POOL_{sym}") or _os.getenv(f"DBC_POOL_{sym.rstrip('X')}", "")
     if not pool or pool == "PLACEHOLDER_POOL_PUBKEY":
         return f"{asset}-DBC"
     return pool
@@ -486,7 +486,7 @@ class AutonomousTradingAgent:
         side = "buy" if sig.direction == "LONG" else "sell"
         size_usd = self.max_position_usd * (sig.confidence_bps / 10000.0)
         return OrderRequest(
-            # Live: DBC pool pubkey from env (DBC_POOL_XAAPL/...). Unset =
+            # Live: DBC pool pubkey from env (DBC_POOL_AAPLX/...). Unset =
             # placeholder that fails closed downstream (no pool → no swap).
             inst_id=_dbc_pool_for_asset(sig.asset),
             side=side,

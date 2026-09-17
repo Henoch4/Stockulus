@@ -65,7 +65,7 @@ fi
 echo "  HUMAN HANDOFFS remaining (see .env.example for details):"
 echo "    H1 — deploy programs, paste ANCHOR_PROGRAM_ID + VAULT_PROGRAM_ID into .env"
 echo "    H3 — paste CLAWPUMP_API_KEY (cpk_…) from https://clawpump.tech/dashboard (bounty #2)"
-echo "    H4 — fill DBC_POOL_XAAPL/XTSLA/XNVDA after create_pool (one per symbol)"
+echo "    H4 — fill DBC_POOL_AAPLX/TSLAX/NVDAX after create_pool (one per symbol)"
 echo "    (NANSEN_API_KEY is Phase C — leave the placeholder.)"
 echo ""
 echo "=== Done. Verify: solana balance -k $AGENT_KEYPAIR_PATH ==="

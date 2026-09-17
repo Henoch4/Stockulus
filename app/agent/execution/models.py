@@ -52,7 +52,7 @@ class OrderStatus(Enum):
 @dataclass
 class OrderRequest:
     """A trade order request — input from the trading agent."""
-    inst_id: str           # e.g. "xAAPL" or "xAAPL-DBC"
+    inst_id: str           # e.g. "AAPLx" or DBC pool pubkey
     side: OrderSide        # "buy" or "sell"
     order_type: OrderType  # "market" or "limit"
     size: str              # order size, interpreted per size_unit

@@ -2,7 +2,7 @@
 
 ## 0. Decisions locked (your answers)
 
-- Stocks: xAAPL, xTSLA, xNVDA. Quote: USDC. Risk: $100 max, $20 daily loss, 1x leverage devnet.
+- Stocks: AAPLx, TSLAx, NVDAx. Quote: USDC. Risk: $100 max, $20 daily loss, 1x leverage devnet.
 - HMM: 4 features `[vol, funding_z, basis, ret]`, 3 states. Optimal as you said.
 - Vault demo: **90/10 Principal-Protected** (not covered call). 90% low-risk yield + 10% yield buys OTM calls on stock basket. 100% protection + asymmetric upside. Covered call deferred (caps upside, harder pitch).
 - Wallet: generate throwaway devnet for now. RPC default devnet. Clawpump key Day 4.

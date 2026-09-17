@@ -23,7 +23,7 @@ cd app/ts
 pnpm install
 pnpm run build
 node dist/create_config.js 1.0   # calm regime
-node dist/create_pool.js <base_mint> <config_pubkey> "xAAPL" "xAAPL" "https://..."
+node dist/create_pool.js <base_mint> <config_pubkey> "AAPLx" "AAPLx" "https://..."
 node dist/swap.js <pool_pubkey> 100 99 false  # buy $100 stock with USDC
 
 # Solana programs
@@ -90,7 +90,7 @@ User deposits USDC → TradingVault mints shares
 |-----------|--------|----------|
 | TradeAuditTrail deployed | ✅ | Program ID: `STCKaudit...` |
 | TradingVault deployed | ✅ | Program ID: `STCKvault...` |
-| DBC pool created | ✅ | Pool: `xAAPL/USDC` |
+| DBC pool created | ✅ | Pool: `AAPLx/USDC` |
 | Carry trade executed | ✅ | Tx: `...` |
 | Audit trail logged | ✅ | Decision + execution receipts |
 | Vault deposit/withdraw | ✅ | Shares minted/burned |

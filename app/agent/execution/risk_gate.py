@@ -209,8 +209,8 @@ class RiskGate:
         self.max_price_age_seconds = max_price_age_seconds
         self.earnings_blackout = earnings_blackout
         self.allowed_assets = allowed_assets or [
-            "xAAPL", "xTSLA", "xNVDA",
-            "xAAPL-DBC", "xTSLA-DBC", "xNVDA-DBC",
+            "AAPLx", "TSLAx", "NVDAx",
+            "AAPLx-DBC", "TSLAx-DBC", "NVDAx-DBC",
         ]
         self.allowed_companions = allowed_companions or []
         self.regime_throttle = regime_throttle
@@ -365,7 +365,7 @@ class RiskGate:
             base = inst_id.split("-")[0].replace("x", "").upper()
             if base in self._earnings_blacklist:
                 return False
-        # Exact match OR base-symbol match (accepts both "xAAPL" and "xAAPL-DBC")
+        # Exact match OR base-symbol match (accepts both "AAPLx" and "AAPLx-DBC")
         return inst_id in self._allowed_set or inst_id.split("-")[0] in self._allowed_set
 
     def set_earnings_blacklist(self, symbols: list[str]) -> None:

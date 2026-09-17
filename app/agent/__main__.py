@@ -40,7 +40,7 @@ async def main():
         max_daily_trades=10,
         max_leverage=1.0,
         min_confidence_bps=7000,
-        allowed_assets=["xAAPL", "xTSLA", "xNVDA"],
+        allowed_assets=["AAPLx", "TSLAx", "NVDAx"],
         counters_durable=True,
         counter_store=counters,
     )
@@ -83,7 +83,7 @@ async def main():
     # Run 3 cycles
     for i in range(3):
         print(f"\n=== Cycle {i+1} ===")
-        result = await agent.run_trading_cycle(["xAAPL", "xTSLA", "xNVDA"])
+        result = await agent.run_trading_cycle(["AAPLx", "TSLAx", "NVDAx"])
         print(f"Signals: {len(result.signals)}, Decisions: {len(result.decisions)}, Executions: {len(result.executions)}")
         if result.errors:
             print(f"Errors: {result.errors}")

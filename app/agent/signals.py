@@ -43,7 +43,7 @@ class SignalStrength(Enum):
 class Signal:
     """A single trading signal from one strategy."""
     strategy: str
-    asset: str          # e.g. "xAAPL"
+    asset: str          # e.g. "AAPLx"
     direction: SignalDirection
     confidence_bps: int   # 0–10000 (basis points, 7000 = 70%)
     entry_price: float | None = None

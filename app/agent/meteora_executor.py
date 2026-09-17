@@ -105,7 +105,7 @@ async def demo():
     rpc = os.getenv("RPC_URL", "https://api.devnet.solana.com")
     exe = MeteoraExecutor(rpc)
     # exe.create_config(1.0)  # calm regime
-    # exe.create_pool("BASE_MINT", "CONFIG_PUBKEY", "xAAPL", "xAAPL", "https://...")
+    # exe.create_pool("BASE_MINT", "CONFIG_PUBKEY", "AAPLx", "AAPLx", "https://...")
     print("MeteoraExecutor ready — call create_config/create_pool/swap")
 
 if __name__ == "__main__":
