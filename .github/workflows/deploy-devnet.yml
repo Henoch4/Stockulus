@@ -9,14 +9,13 @@ permissions:
   contents: read
 
 env:
-  SOLANA_VERSION: "2.0.14"
+  # Agave >=2.1 bundles Cargo with lockfile v4 support (2.0.x fails on v4 locks).
+  SOLANA_VERSION: "2.1.20"
   CLUSTER: "devnet"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      SOLANA_VERSION: "2.0.14"
     steps:
       - uses: actions/checkout@v4
 
@@ -41,12 +40,21 @@ jobs:
 
           solana --version
           solana-keygen --version
+          cargo --version
+          cargo-build-sbf --version || true
 
-      - name: Generate deployer keypair
+      - name: Generate deployer and program keypairs
         id: deployer
+        shell: bash
         run: |
+          set -Eeuo pipefail
           mkdir -p config/ci
+          # All three keypairs are ephemeral runner state (config/ci/*.json is
+          # gitignored and excluded from artifacts). The program keypairs were
+          # missing entirely — deploy steps reference them below.
           solana-keygen new --no-bip39-passphrase -s -o config/ci/deployer.json --force
+          solana-keygen new --no-bip39-passphrase -s -o config/ci/trade_audit_kp.json --force
+          solana-keygen new --no-bip39-passphrase -s -o config/ci/trading_vault_kp.json --force
           echo "deployer_id=$(solana-keygen pubkey config/ci/deployer.json)" >> "$GITHUB_OUTPUT"
 
       - name: Build trade_audit_trail (SBF)
