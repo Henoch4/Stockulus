@@ -1,0 +1,7 @@
+[features]
+default = []
+seeds = []
+
+[programs.devnet]
+trade_audit_trail = "STCKauditXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"
+trading_vault = "STCKvaultXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX"

@@ -1,0 +1,78 @@
+name: Build + deploy Stockulus programs to Solana devnet
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "deploy-*"
+
+permissions:
+  contents: read
+
+env:
+  SOLANA_VERSION: "2.0.14"
+  CLUSTER: "devnet"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      SOLANA_VERSION: "2.0.14"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Solana/Agave CLI (bundles cargo-build-sbf + SBF toolchain)
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v${SOLANA_VERSION}/install)"
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> "$GITHUB_PATH"
+
+      - name: Generate deployer keypair
+        id: deployer
+        run: |
+          mkdir -p config/ci
+          solana-keygen new --no-bip39-passphrase -s -o config/ci/deployer.json --force
+          echo "deployer_id=$(solana-keygen pubkey config/ci/deployer.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Build trade_audit_trail (SBF)
+        run: cargo build-sbf --manifest-path programs/trade_audit_trail/Cargo.toml
+      - name: Build trading_vault (SBF)
+        run: cargo build-sbf --manifest-path programs/trading_vault/Cargo.toml
+
+      - name: Fund deployer (devnet airdrop, retry)
+        run: |
+          solana config set --url https://api.devnet.solana.com
+          for i in 1 2 3 4 5; do
+            solana airdrop 2 -k config/ci/deployer.json && break || sleep 15
+          done
+          solana balance -k config/ci/deployer.json
+
+      - name: Deploy trade_audit_trail
+        run: |
+          solana program deploy -k config/ci/deployer.json \
+            -u https://api.devnet.solana.com \
+            --program-id config/ci/trade_audit_kp.json \
+            target/deploy/trade_audit_trail.so
+
+      - name: Deploy trading_vault
+        run: |
+          solana program deploy -k config/ci/deployer.json \
+            -u https://api.devnet.solana.com \
+            --program-id config/ci/trading_vault_kp.json \
+            target/deploy/trading_vault.so
+
+      - name: Emit live program IDs for submission
+        run: |
+          echo "TRADE_AUDIT_TRAIL_ID=$(solana-keygen pubkey config/ci/trade_audit_kp.json)" | tee -a target/deploy/devnet.env
+          echo "TRADING_VAULT_ID=$(solana-keygen pubkey config/ci/trading_vault_kp.json)" | tee -a target/deploy/devnet.env
+          echo "CLUSTER=devnet" >> target/deploy/devnet.env
+
+      - name: Upload devnet artifacts (pubkeys + binaries ONLY — never keypairs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: devnet-deploy
+          # SECURITY: config/ci/*.json holds PRIVATE keys (deployer + program
+          # upgrade authorities). They must never leave the runner. devnet.env
+          # carries pubkeys only — that is all the submission needs.
+          path: |
+            target/deploy/*.so
+            target/deploy/devnet.env
+          retention-days: 7

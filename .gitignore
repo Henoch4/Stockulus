@@ -1,0 +1,40 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# --- Node ---
+node_modules/
+dist/
+*.tsbuildinfo
+
+# --- Secrets: NEVER commit real keys / .env ---
+.env
+.env.*
+!*.env.example
+!*.env.template
+*.key
+*.keypair
+*id.json
+*.pem
+agent_keypair.json
+deployer_keypair.json
+program-keypair.json
+
+# --- Rust / Anchor build artifacts ---
+/target/
+programs/*/target/
+.anchor/
+.idl/
+sbf-out/
+
+# --- Hardened: devnet deploy keypairs generated locally, NOT in git ---
+/.keys/
+
+# --- CI/local deploy key material (private keys — never commit) ---
+config/ci/*.json
+
+# --- Local runtime state (counters, not secrets — avoid committing stale state) ---
+risk_state.json

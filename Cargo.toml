@@ -1,0 +1,3 @@
+[workspace]
+members = ["programs/trade_audit_trail", "programs/trading_vault"]
+resolver = "2"
