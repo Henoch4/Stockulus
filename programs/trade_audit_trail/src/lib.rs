@@ -1,5 +1,4 @@
 use anchor_lang::prelude::*;
-use anchor_spl::token::{self, Token, TokenAccount, Mint};
 
 declare_id!("STCKauditXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
 
@@ -84,8 +83,8 @@ pub mod trade_audit_trail {
         decision.decision_id = decision_id;
         decision.package_id = package_id;
         decision.agent = ctx.accounts.agent.key();
-        decision.asset = asset;
-        decision.signal = signal;
+        decision.asset = asset.clone();
+        decision.signal = signal.clone();
         decision.strategy = strategy;
         decision.confidence = confidence;
         decision.entry_price = entry_price;
@@ -195,6 +194,7 @@ pub struct SetRiskParams<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(decision_id: [u8; 32])]
 pub struct LogDecision<'info> {
     #[account(
         mut,
@@ -217,6 +217,7 @@ pub struct LogDecision<'info> {
 }
 
 #[derive(Accounts)]
+#[instruction(decision_id: [u8; 32])]
 pub struct RecordExecution<'info> {
     #[account(
         mut,
