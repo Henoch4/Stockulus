@@ -1,4 +1,7 @@
 {
   "_note": "Supporters wall — names/handles of launch contributors. Amounts in SOL. Updated by hand on each contribution (verified against chain). Rendered by Dashboard.get_supporters().",
+  "goal_sol": 0.15,
+  "contribute_to": "BaSrnkuqZ1hWY9i9L6RrhKm6wRV5Pi3f81brxxk2nnGc",
+  "terms": "Pro-rata STCKLS at launch + wall name. Unused funds return to sender if launch doesn't happen within 14 days of goal.",
   "supporters": []
 }
