@@ -46,6 +46,7 @@ class Dashboard:
             "multi_leg": self._multi_leg_metrics(),
             "patterns": self.agent.pattern_registry.get_metrics(),
             "onchain": self._onchain_metrics(),
+            "supporters": self.get_supporters(),
         }
 
     def _agent_metrics(self) -> dict:
@@ -91,6 +92,28 @@ class Dashboard:
             "connected": self.onchain_logger.is_connected(),
             "agent_address": str(self.onchain_logger.agent_address),
             "program_id": str(self.onchain_logger.program_id),
+        }
+
+    def get_supporters(self) -> dict:
+        """Supporters wall — launch contributors, updated by hand per donation.
+
+        Source: config/supporters.json ({"supporters": [{name, amount_sol, tx}]}).
+        Zero dependencies, no chain calls; amounts verifiable against tx hashes.
+        """
+        from pathlib import Path
+
+        path = Path(__file__).resolve().parent.parent.parent / "config" / "supporters.json"
+        try:
+            import json
+
+            data = json.loads(path.read_text(encoding="utf-8"))
+            supporters = data.get("supporters", [])
+        except (OSError, ValueError):
+            supporters = []
+        return {
+            "count": len(supporters),
+            "total_sol": round(sum(float(s.get("amount_sol", 0)) for s in supporters), 4),
+            "supporters": supporters,
         }
 
     # ─── Convenience endpoints for specific views ───
