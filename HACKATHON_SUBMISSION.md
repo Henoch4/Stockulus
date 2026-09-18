@@ -107,6 +107,8 @@ User deposits USDC → TradingVault mints shares
 | Agent state init + risk params | ✅ | `fbD3Sx…QUc48`, `2k9LJap3…3enLMqW5` |
 | Decision logged on-chain | ✅ | `dec_0ff8e8bb4d80` (LONG AAPLx, 9000bps, $4.50) |
 | Live DBC swap ($4.50 → 29,699 dAAPLx) | ✅ | [tx](https://solscan.io/tx/AvubGLJ8q4JiF4ub5ejVmbjBZjMXiu9aBX2gJNxGsasXR8D5tNS6eezHiSQC61vsFMS2fKggq9AF87HQ3afmLoD?cluster=devnet) |
+| dTSLAx seed swap (0.02 wSOL) | ✅ | [tx](https://solscan.io/tx/5yMjU9Qw4Y1sDTD97ehPBtYPhms21Vnd5AZRK7k9HoeZmh4CDwbjX5YyEbnKEBLNZv3VAzaJfeRm9FyR74VaCfjh?cluster=devnet) |
+| dNVDAx seed swap (0.02 wSOL) | ✅ | [tx](https://solscan.io/tx/2B6rsqjWNBNnQ6tJcniqMjG8Hpqbo9onymkZmtYJiN3YXv9RVz6BiDdpMkuddHhj5jTyB3HBPqR9KsMeEorMoLwP?cluster=devnet) |
 | Vault deposit/withdraw | ⏳ | Program live; flow untested (no devnet USDC) — mainnet/Phase C |
 | Clawpump agent | ✅ live / ⏳ token | Agent `756d9f58-…` live; STCKLS launch pending ~0.15 SOL funding |
 
