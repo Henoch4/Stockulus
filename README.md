@@ -70,7 +70,8 @@ Stockulus is a delta-neutral carry vault for tokenized equities on Solana. The c
 ### 3. Volatility-Adjusted DBC Configs (Meteora Bounty)
 - HMM regime detector (3 states: low/range, mid/trend, high/cascade)
 - Regime → DBC curve: calm=linear low-fee, stress=exponential high-fee
-- Auto-tuned graduation thresholds for equity-like assets
+- Live on devnet: Token-2022 config `3WDNBk…` + dAAPLx/dTSLAx/dNVDAx pools (wSOL quote — no Circle USDC on devnet)
+- First swap proven: 0.03 wSOL → 29,699 dAAPLx ([tx](https://solscan.io/tx/AvubGLJ8q4JiF4ub5ejVmbjBZjMXiu9aBX2gJNxGsasXR8D5tNS6eezHiSQC61vsFMS2fKggq9AF87HQ3afmLoD?cluster=devnet))
 
 ### 4. 90/10 Principal-Protected Vault
 - 90% deposit → low-risk yield (lending)
@@ -78,9 +79,9 @@ Stockulus is a delta-neutral carry vault for tokenized equities on Solana. The c
 - Floor ≈ deposit, asymmetric upside, no liquidation
 
 ### 5. Clawpump Agent Launch
-- Agent token + xStock/USDC DBC pool
-- 75% creator fees to agent wallet
-- Stock-paired pool requirement satisfied
+- Agent `Stockulus` live (`756d9f58-…`), API wired
+- STCKLS token + stock-paired pool: pending ~0.15 SOL funding
+- 75% creator fees → agent wallet → compounds vault
 
 ## Quick Start
 
@@ -142,8 +143,8 @@ Stockulus/
 
 ## Submission Links
 - **GitHub**: https://github.com/Henoch4/Stockulus
-- **Demo Video**: [YouTube/Loom link]
-- **Devnet Explorer**: [Solscan links for deployed programs]
+- **Demo Video**: [recording pending — script in `docs/VIDEO_SCRIPT.md`]
+- **Devnet Explorer**: [TradeAuditTrail](https://solscan.io/account/516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS?cluster=devnet) · [TradingVault](https://solscan.io/account/Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF?cluster=devnet) · [dAAPLx pool](https://solscan.io/account/CVrD4XycbRgMhWjr6tTQ6ebV41NGAG95cV8NccCvvPUU?cluster=devnet)
 
 ## Team
 - **Solo**: @henoch4
