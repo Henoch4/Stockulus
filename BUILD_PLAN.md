@@ -24,36 +24,41 @@ Vault demo: **90/10 Principal-Protected** (90% yield vault + 10% yield buys OTM 
 
 ```
 Stockulus/
-  BUILD_PLAN.md              <- this file
-  README.md                  <- submission README
-  HACKATHON_SUBMISSION.md    <- track mapping + demo links
-  Anchor.toml                <- devnet program IDs (placeholder until deploy)
+  BUILD_PLAN.md              <- this file (audited 2026-09-17, §8 = actual states)
+  README.md                  <- submission README (real IDs/txs)
+  HACKATHON_SUBMISSION.md    <- track mapping + Solscan evidence
+  Anchor.toml                <- LIVE devnet IDs (516a5K… audit, Gd7Ciu… vault)
   Cargo.toml                 <- workspace: programs/trade_audit_trail + trading_vault
-  .env.example               <- RPC_URL, ANCHOR_PROGRAM_ID, VAULT_PROGRAM_ID, AGENT_KEYPAIR_PATH, CLAWPUMP_API_KEY
-  config/profiles.yaml       <- curator allowlist (conservative/standard/aggressive/defensive, all max_leverage 1.0) DONE
+  .env.example               <- all vars incl. QUOTE_MINT/DECIMALS, SOL_PRICE_USD, NANSEN_API_KEY
+  config/profiles.yaml       <- curator allowlist (all max_leverage 1.0) DONE
+  config/fee_ledger.json     <- STCKLS fee pipeline ledger (agent-appended) DONE
+  config/supporters.json     <- supporters wall (goal 0.15 SOL) DONE
   programs/
-    trade_audit_trail/src/lib.rs   <- Anchor audit trail (AgentState, Decision, risk params, kill switch) DONE skeleton
-    trading_vault/src/lib.rs       <- Anchor ERC4626-style vault (deposit/withdraw/attest/setPackageOpen) DONE skeleton
+    trade_audit_trail/src/lib.rs   <- Anchor audit trail — DEPLOYED 516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS
+    trading_vault/src/lib.rs       <- Anchor ERC4626-style vault — DEPLOYED Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF
   app/
     agent/                   <- Python off-chain agent
       bsm.py                 <- DONE: bs_price, bs_price_merton, delta_merton, greeks, greeks_merton, implied_vol, hedge_order
       stock_carry.py         <- DONE: carry_annualized, tokenized_stock_carry_signal, vault_9010_allocation, bsm_mispricing
       regime_hmm.py          <- DONE: infer_regime_simple + RegimeHMM (hmmlearn opt) + dbc_action_for_regime
-      xstocks.py             <- DONE: XStocksClient (assets, price-data, multiplier, history, corporate-actions, oracles, PoR)
-      meteora_executor.py    <- DONE shim: create_config/create_pool/swap/state/quote/migrate via node subprocess
-      clawpump_client.py     <- DONE: agents, launch_token, earnings, swap quote/execute, balances
-      audit_logger_sol.py    <- DONE shim: anchorpy TradeAuditTrail client (set_risk_params/log_decision/record_execution/kill)
-      agent.py               <- PORTED (verify Solana wiring, no OKX imports)
-      signals.py             <- COPIED (verify stock_carry registered in ensemble path)
-      execution/models.py    <- COPY VERBATIM (generic already)
-      execution/risk_gate.py <- COPY + earnings_blackout flag + default max_leverage=1.0 for stocks
-      execution/executor.py  <- REPLACE OKX CLI with Solana path (RiskGate check + MeteoraExecutor.swap + _verify_fill)
-      multi_leg.py           <- COPY VERBATIM (Step generic; verify Meteora Step actions)
-      curator.py, data_integrity.py (+check_corporate_action), validation.py, audit_trail.py <- COPY (+ small stock adds)
-      dashboard.py, __main__.py, requirements.txt <- DONE (verify)
-    ts/src/                  <- DONE stubs: create_config.ts, create_pool.ts, swap.ts, quote.ts, state.ts, migrate.ts
-  scripts/demo.sh, deploy_devnet.sh, test_wiring.py <- DONE (verify on devnet)
-  docs/EQUATIONS.md          <- locked decisions + Merton/HMM/90-10 spec; placeholders §3.8 await your refs
+      xstocks.py             <- DONE, PROBED 2026-09-17: suffix-x symbols, {"nodes"} unwrap, {"quote"} price, network-param multipliers
+      meteora_executor.py    <- DONE: subprocess bridge (ts_dir path fixed)
+      clawpump_client.py     <- DONE + LIVE: key verified, agent Stockulus returned, list unwrap fixed
+      audit_logger_sol.py    <- DONE + LIVE: parsed Idl, Context obj, snake_case, systemProgram, initialize(); init+params+decision+receipt all confirmed on-chain
+      agent.py               <- DONE + LIVE: full cycle proven (signal→risk→audit→swap→record); USD→wSOL conversion; pool resolution; fee hook
+      signals.py             <- DONE (carry registered in ensemble path)
+      execution/models.py    <- DONE
+      execution/risk_gate.py <- DONE: earnings_blackout + blacklist + max_leverage=1.0 defaults (AAPLx/TSLAx/NVDAx)
+      execution/executor.py  <- DONE: Solana rewrite (DBC swap + _verify_fill collar + kill-switch trip)
+      multi_leg.py           <- DONE (generic Step; agent uses direct swap, multi_leg kept for packages)
+      curator.py, data_integrity.py (+check_corporate_action), validation.py, audit_trail.py <- DONE
+      dashboard.py           <- DONE: +get_fee_pipeline +get_supporters +/metrics/fees +/metrics/supporters
+      __main__.py            <- DONE: explicit .env path, DRY_RUN env-gated (default true)
+      requirements.txt       <- DONE
+    ts/src/                  <- DONE + LIVE: create_config, create_pool, swap, quote, state, migrate, create_mint, wrap_sol, inspect_signers
+  scripts/                   <- setup_credentials.sh, import_phantom_key.py, deploy_devnet.sh, demo.sh, demo_live_micro.py, test_wiring.py — all DONE
+  docs/EQUATIONS.md          <- locked decisions + Merton/HMM/90-10 spec
+  docs/VIDEO_SCRIPT.md       <- 2-min recording script DONE
 ```
 
 **Rule:** one file, one owner at a time (§8 DAG). Never edit the same file from two parallel tasks.
@@ -64,20 +69,20 @@ Stockulus/
 
 | Tarstrade file | Action in Stockulus | Status |
 |---|---|---|
-| `src/execution/models.py` | copy verbatim | done/verify |
-| `src/execution/risk_gate.py` | copy + `earnings_blackout` + `max_leverage=1.0` default | todo (small diff) |
-| `src/multi_leg.py` | copy verbatim | done/verify |
-| `src/signals.py` mean_rev/momentum/funding/ensemble | copy verbatim | done/verify |
+| `src/execution/models.py` | copy verbatim | done |
+| `src/execution/risk_gate.py` | copy + `earnings_blackout` + `max_leverage=1.0` default | done (blacklist + suffix-x defaults live) |
+| `src/multi_leg.py` | copy verbatim | done (kept; agent uses direct swap) |
+| `src/signals.py` mean_rev/momentum/funding/ensemble | copy verbatim | done |
 | `src/signals.py:950 funding_carry_signal` | template for `stock_carry.py` | done |
 | `src/curator.py` + `config/profiles.yaml` | copy + stock profiles | done |
-| `src/validation.py` | copy verbatim | done/verify |
-| `src/data_integrity.py` | copy + `check_corporate_action()` | todo (small diff) |
-| `src/audit_trail.py` | copy verbatim | done/verify |
-| `contracts/TradeAuditTrail.sol` | ported to `programs/trade_audit_trail` | skeleton done → audit §4.6 |
-| `contracts/TradingVault.sol` | ported to `programs/trading_vault` | skeleton done → audit §4.7 |
+| `src/validation.py` | copy verbatim | done (gate runs; OOS data is Phase C/Nansen) |
+| `src/data_integrity.py` | copy + `check_corporate_action()` | done |
+| `src/audit_trail.py` | copy verbatim | done |
+| `contracts/TradeAuditTrail.sol` | ported to `programs/trade_audit_trail` | DEPLOYED 516a5K… (4 compile fixes + IDL sync proven live) |
+| `contracts/TradingVault.sol` | ported to `programs/trading_vault` | DEPLOYED Gd7Ciu… (deposit flow untested — no devnet USDC) |
 | `ml/pipeline.py`, `features.py`, `labeling.py` | research only, post-submission; NOT demo path | parked |
-| `src/execution/executor.py` OKX part | REWRITE as Solana executor | todo |
-| `src/audit_logger.py` EVM part | REPLACED by `audit_logger_sol.py` | shim done → IDL sync |
+| `src/execution/executor.py` OKX part | REWRITTEN as Solana executor | done (DBC swap + fill collar) |
+| `src/audit_logger.py` EVM part | REPLACED by `audit_logger_sol.py` | done (init/params/decision/receipt all confirmed on-chain) |
 | Do NOT port | `okx_cli.py`, OKX reconciliation, `mermail-trading-skill/`, `t3n/`, full test suite (write 5 new tests only) | — |
 
 ---
@@ -181,15 +186,22 @@ solana airdrop 2 --url devnet
 ```
 RPC: devnet `https://api.devnet.solana.com`. Faucet: https://faucet.solana.com. Explorer: Solscan/SolanaFM (devnet).
 
-### 4.2 Program IDs + mints
+### 4.2 Program IDs + mints (LIVE devnet values)
 ```
+Stockulus programs (devnet, verified executable via RPC):
+  TradeAuditTrail: 516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS
+  TradingVault:    Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF
 DBC program (mainnet == devnet): dbcij3LWUppWqq96dh6gJWwBifmcGfLSB5D4DuSMaqN
 Pool authority PDA: FhVo3mqL8PW5pH5U2CN4XE33DokiyZnUwuGpH2hmHLuM
-USDC: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v  (keeper threshold 750 USDC)
-wSOL: So11111111111111111111111111111111111111112  (10 SOL threshold)
-DAMM v2 fee key #6 (customizable, use for stocks): A8gMrEPJkacWkcb3DGwtJwTe16HktSEfvwtuDh2MCtck
+wSOL: So11111111111111111111111111111111111111112 (9dp, devnet quote — no Circle USDC on devnet)
+USDC mainnet: EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v (6dp; that address on devnet is a wrong-program account — unusable)
+DBC config (Token-2022, calm linear): 3WDNBkpE67v2wzMWY1mgyyAuE4eugFBbgniRa1tqojFY
+Pools: dAAPLx CVrD4X…vvPUU · dTSLAx 84B8P2…wDEsU · dNVDAx EebJJc…2FhqdH (all vs wSOL)
+DAMM v2 fee key #6 (customizable, for mainnet stocks): A8gMrEPJkacWkcb3DGwtJwTe16HktSEfvwtuDh2MCtck
 ```
-Stock quote pairs: keepers migrate stock-token quotes when threshold ≥ 750 USD equiv → set `migration_quote_threshold` = 750 USDC worth.
+Devnet quote = wSOL (`QUOTE_MINT`/`QUOTE_DECIMALS=NINE` env; mainnet flips to USDC/SIX).
+No xStocks exist on devnet (verified) → demo mints (`dAAPLx`, Token-2022/8dp, keypairs in `app/ts/mint-*.json`, gitignored).
+Real xStocks: Token-2022 + transferHook/pausable/scaled-UI (mainnet AAPLx probed) → mainnet pools need the transfer-hook DBC path (Phase C).
 
 ### 4.3 DBC accounts (touch only these)
 ```
@@ -208,10 +220,10 @@ Our files: `app/ts/src/state.ts` (reads), `quote.ts` (quote), rest write.
 ### 4.4 DBC instructions (4 for demo, skip the rest)
 | Need | Instruction | SDK call | Our file |
 |---|---|---|---|
-| partner config | `create_config(ConfigParameters)` — MigrationOption::DAMMv2, BaseFeeMode linear/exponential (NOT rate-limiter for demo), fee 25–9900bps | `client.partner.createConfig(...)` | `create_config.ts` DONE stub → verify params §4.5 |
-| launch pool | `initialize_virtual_pool_with_spl_token` — base=xStock mint, quote=USDC, Metaplex metadata | `client.creator.createPool(...)` | `create_pool.ts` DONE stub → verify |
-| trade | `swap2(SwapParameters2)` — mode 0 exact-in | `client.pool.swap2(...)` | `swap.ts` DONE stub → verify |
-| graduate | `migration_damm_v2` | `client.migration.migrateToDammV2(...)` or keeper auto or migrator.meteora.ag | `migrate.ts` DONE stub → verify |
+| partner config | `create_config(ConfigParameters)` — MigrationOption::DAMMv2, BaseFeeMode linear/exponential, fee 25–9900bps | `client.partner.createConfig(...)` | `create_config.ts` DONE + LIVE (Token-2022 config `3WDNBk…`, `TOKEN_TYPE`/`BASE_DECIMALS` env) |
+| launch pool | `initialize_virtual_pool_with_token2022` — base=mint whose KEYPAIR SIGNS (program allocates+inits it), quote=wSOL devnet | `client.creator.createPool(...)` | `create_pool.ts` DONE + LIVE (3 pools; `create_mint.ts` saves mint keypairs) |
+| trade | `swap2(SwapParameters2)` — mode 0 exact-in | `client.pool.swap2(...)` | `swap.ts` DONE + LIVE (29,699 dAAPLx fill verified; `QUOTE_DECIMALS` scaling) |
+| graduate | `migration_damm_v2` | `client.migration.migrateToDammV2(...)` or keeper auto or migrator.meteora.ag | `migrate.ts` DONE (untriggered — pools below threshold) |
 Skip for submission: transfer-hook, lockers, surplus withdraw, operator, claim-fees (wire later, Phase C).
 `SwapParameters2`: amount_0 = in (exact-in) / out (exact-out), amount_1 = min-out / max-in, swap_mode 0/1/2.
 Near 750 USDC threshold use PartialFill to avoid failed swaps.
@@ -219,50 +231,50 @@ Near 750 USDC threshold use PartialFill to avoid failed swaps.
 ### 4.5 Vol-adjusted DBC config generator (Meteora bounty core)
 TS pattern (from docs.meteora.ag/developer-guides/dbc/typescript-sdk/examples — use verbatim, only params change):
 - Imports: `DynamicBondingCurveClient, ActivationType, BaseFeeMode, buildCurveWithCustomSqrtPrices, CollectFeeMode, createSqrtPrices, MigrationOption, MigrationFeeOption, TokenDecimal, TokenType, TokenAuthorityOption` from SDK; `Connection, Keypair, PublicKey` from web3.js.
-- STOCK curve: 3–4 sqrt_price points, quote=USDC (6dp), base=xStock (check mint decimals via `get_solana_mint`).
+- STOCK curve: 3–4 sqrt_price points, quote=wSOL devnet (9dp) / USDC mainnet (6dp) via `QUOTE_DECIMALS`, base=Token-2022 8dp via `BASE_DECIMALS` (mirrors xStocks); token program via `TOKEN_TYPE` (default Token2022).
 - Calm (regimeScale>0.9): `FeeSchedulerLinear`, startingFeeBps 120 → ending 100, 60 periods, 3600s.
 - Stress (regimeScale≤0.9): `FeeSchedulerExponential`, startingFeeBps 900 → ending 100.
 - Always: `dynamicFeeEnabled=true`, `collectFeeMode=QuoteToken`, `creatorTradingFeePercentage=50`.
 - Migration: `MET_DAMM_V2`, `Customizable`, fee 10%, creator 50%, migratedPoolFee 100bps.
 - Liquidity: partner 0% / partner-permanent-lock 100% (no creator skim for demo).
 - `liquidityWeights: [2,1,1]`, `activationType: Timestamp`.
-- Python `dbc_config.py` (new, ~60 lines) mirrors this and outputs JSON → TS creates config. Demo shows calm vs stress configs side-by-side.
-- `createConfig`: config=Keypair.generate() signer + feeClaimer + leftoverReceiver + payer + quoteMint=USDC.
+- Python `dbc_config.py` superseded: regime→config is a `regimeScale` argv (`create_config.js 1.0` calm) — no mirrored module needed; HMM regime selects the arg.
+- `createConfig`: config=Keypair.generate() signer + feeClaimer + leftoverReceiver + payer + quoteMint=wSOL(devnet)/USDC(mainnet).
 - `createPool`: baseMint=xStock mint, config, name/symbol/uri, payer, poolCreator; pool=`deriveDbcPoolAddress(USDC, baseMint, config)`.
 - `swap2`: swapBaseForQuote=false (buy base with USDC), ExactIn, slippageBps 100.
 - Progress: `getPoolQuoteTokenCurveProgress` + `getPoolFeeMetrics` + `getPoolFeeBreakdown`.
 
-### 4.6 Anchor program 1: trade_audit_trail (skeleton DONE → verify these 5 items)
-1. `initialize` creates `AgentState` PDA `["agent_state", agent]` (done).
-2. `set_risk_params` tightening-only (done).
-3. `log_decision` checks kill_switch, size ≤ max_position, confidence ≥ floor, daily bucket rollover, trades<100, loss<cap; writes `Decision` PDA `["decision", decision_id]`; emits `DecisionLogged` (done).
-4. `record_execution` owner-check + direction-aware loss (done).
-5. Kill-switch activate/deactivate (done).
-Remaining: `anchor build` + `anchor test` on devnet; export IDL → sync `audit_logger_sol.py` IDL const (field-for-field); replace placeholder program ID in `Anchor.toml` after `anchor deploy --provider.cluster devnet`.
+### 4.6 Anchor program 1: trade_audit_trail (BUILT + DEPLOYED 516a5K…)
+Port of `TradeAuditTrail.sol` → Anchor, ed25519 agent. All 5 items proven live:
+init tx `fbD3Sx…`, risk-params txs, `log_decision` (`dec_0ff8e8bb4d80`) + execution receipt.
+Compile fixes banked: `#[instruction]` seeds, String clones. `Anchor.toml` + `declare_id!` carry live IDs.
+Python logger: parsed `Idl` + `Context` + snake_case + systemProgram + `initialize()`; log BEFORE execute, RPC failure blocks trade.
 
-### 4.7 Anchor program 2: trading_vault (skeleton DONE → verify these 4 items)
+### 4.7 Anchor program 2: trading_vault (BUILT + DEPLOYED Gd7Ciu…; deposit flow untested — no devnet USDC)
 `initialize` (owner/agent/mint/caps), `deposit` (min/max checks, USDC transfer in, pro-rata share mint),
 `withdraw` (blocked when `package_open`, burn + transfer out), `attest_total_assets` (agent-only, max TVL, delta cap),
-`set_package_open` (agent-only). Remaining: `anchor build/test/deploy`; single-step withdraw is the demo (two-step request→finalize is Phase C).
+`set_package_open` (agent-only). Deployed via CI; deposit/withdraw flow untested (no devnet USDC) — mainnet/Phase C.
 
-### 4.8 Python Solana executor + audit logger (shims DONE → verify on devnet)
-- `meteora_executor.py`: subprocess `node app/ts/dist/<script>.js`, JSON stdout, 60s timeout. Keep agent loop unchanged.
-- `audit_logger_sol.py`: anchorpy `Program(IDL, program_id, provider)`; `log_decision` BEFORE executor call; RPC failure → block trade (same guarantee as EVM version). Verify keypair load path matches `AGENT_KEYPAIR_PATH` format (solana-keygen JSON array).
+### 4.8 Python Solana executor + audit logger (BUILT + PROVEN on devnet)
+- `meteora_executor.py`: subprocess `node app/ts/dist/<script>.js`, JSON stdout, 60s timeout; ts_dir path fixed; USD→wSOL conversion via `SOL_PRICE_USD` (Pyth feed Phase C).
+- `audit_logger_sol.py`: parsed `Idl.from_json` + `Context` + snake_case accounts + systemProgram/agentState completeness + `initialize()`; `log_decision` BEFORE executor call; RPC failure → block trade. Keypair loader accepts solana-keygen JSON (was hex-only).
 
 ---
 
 ## 5. xStocks / Backpack / Sunrise implementation
 
-Base `https://api.xstocks.fi/api/v2` (public, no key). Implemented in `app/agent/xstocks.py` (DONE):
+Base `https://api.xstocks.fi/api/v2` (public, no key). Implemented in `app/agent/xstocks.py` (DONE, PROBED 2026-09-17):
 ```
-GET /public/assets → list (symbol, Solana mint, decimals, name)
-GET /public/assets/{sym}/price-data → {price, source: onchain|nasdaq-blueocean}
-GET /public/assets/{sym}/multiplier → {current, pending} (display = raw × mult)
-GET /public/assets/{sym}/multiplier/history → splits/divs → div_yield input
-GET /public/corporate-actions/upcoming → earnings/div calendar → risk_gate earnings_blackout
-GET /public/oracles/{sym} → oracle PDAs per network
-GET /public/proof-of-reserves/{sym} → backing check for dashboard
+GET /public/assets → {"nodes": [...100/page]} (symbols are SUFFIX-x: AAPLx/TSLAx/NVDAx)
+GET /public/assets/{sym} → node incl. deployments[] (Solana mint: AAPLx XsbE…csP5)
+GET /public/assets/{sym}/price-data → {"quote": float} (normalized to {"price"})
+GET /public/assets/{sym}/multiplier?network=Solana → {"currentMultiplier"} (AAPLx 1.00327)
+GET /public/assets/{sym}/multiplier/history?network=Solana → {"nodes": [{reason: Dividend, ...}]} → div_yield proxy
+GET /public/corporate-actions/upcoming → {"nodes": [{xstockSymbol, caType, effectiveTimeUtc}]} → blackout map
+GET /public/oracles/{sym} → {"nodes": [{feedId (Pyth hex), decimals}]} 
+GET /public/proof-of-reserves/{sym} → {sharesHeld, circulatingSupply} (AAPLx ratio 1.002)
 ```
+Live spot (quote×mult): AAPLx 337.24, TSLAx 366.47, NVDAx 219.72. Solana = Token-2022 + Scaled UI.
 Solana specifics: SPL Token-2022 + Scaled UI extension. Raw balance constant; apply multiplier off-chain.
 Demo symbols: AAPLx, TSLAx, NVDAx (resolve exact mints via `get_solana_mint` at runtime, cache JSON for offline demo).
 Backpack/Sunrise (https://docs.sunrise.xyz/equities/backpack-securities): 1:1 redeemable real shares narrative
@@ -270,38 +282,25 @@ Backpack/Sunrise (https://docs.sunrise.xyz/equities/backpack-securities): 1:1 re
 
 ---
 
-## 6. Clawpump implementation (bounty #2, Day-4-gated on API key)
+## 6. Clawpump implementation (bounty #2 — KEY WIRED, agent live, launch pending funding)
 
-Docs: https://clawpump.tech, https://agents.clawpump.tech, npm `clawpump`. Implemented in `clawpump_client.py` (DONE):
-```bash
-npx clawpump launch --paid
-npx clawpump create "Stockulus Stock Agent"
-```
-API (needs `cpk_` key — money-gated if paid launch required):
-```
-POST /api/v1/agents → {id, wallet}
-POST /api/v1/launch {agent_id, name, ticker, quote_mint: USDC, meteora_config} → {mint, pool}
-GET /api/agents/:id/earnings → creator fees (75% eligible)
-```
-Flow: Clawpump launch (base=STCKLS token) → Meteora DBC pool (base vs quote USDC or xStock mint)
-→ Python agent trades carry → fees accrue → dashboard shows earnings.
-"Stock-paired" satisfied by quote=xStock mint OR base=stock-tracker token + carry strategy labelled stock-paired.
-No key → demo with recorded API responses + CLI transcript (still submittable; bounty needs live tx).
+Docs: https://clawpump.tech, dashboard. Implemented in `clawpump_client.py` (DONE + LIVE):
+- `cpk_` key in `.env`, verified: `list_agents` returns agent `Stockulus` (`756d9f58-…`), wallet `BaSrnkuqZ1hWY9i9L6RrhKm6wRV5Pi3f81brxxk2nnGc`
+- `list_agents` unwraps `{"agents": [...]}`; explicit `.env` path (bare load_dotenv misses on Windows — fixed in `__main__.py` too)
+- Launch: STCKLS via dashboard or `launch_token` (agent wallet needs ~0.15 SOL: launch + pool + buffer)
+- Fee loop: 75% creator fees → agent wallet → `config/fee_ledger.json` + `/metrics/fees` (SHIPPED)
 
 ---
 
-## 7. Agent loop wiring (P2, single-threaded)
+## 7. Agent loop wiring (BUILT + PROVEN — `scripts/demo_live_micro.py`, $5 cap, all txs real)
 
 ```
-xstocks.get_spot_price → meteora_executor.get_pool_state (perp/dbc price)
-  → stock_carry.tokenized_stock_carry_signal + bsm.bsm_mispricing (scanner)
-  → regime_hmm.predict → curator profile → dbc_config (if regime changed)
-  → data_integrity (staleness + corporate-action blackout)
-  → risk_gate.check_order → audit_logger_sol.log_decision (BLOCK on fail)
-  → meteora_executor.swap → audit_logger_sol.record_execution
-  → vault attest_total_assets (NAV) → dashboard update
+xstocks.get_spot_price (live) → carry signal (live div proxy) → regime → curator
+  → data_integrity → risk_gate.check_order (pool allowlist) → audit log_decision (BLOCK on fail)
+  → USD→wSOL conversion → meteora.swap → audit record_execution → fee-ledger append
 ```
-Files touched: `agent.py`, `execution/executor.py`, `__main__.py`, `dashboard.py` only.
+Proven 2026-09-17: init `fbD3Sx…` + params + decision `dec_0ff8e8bb4d80` + swap `AvubGL…` (+29,699 dAAPLx).
+Bugs banked: audit `package_id`, DBC pool env resolution, dry-run default true, executor ts_dir.
 
 ---
 
@@ -317,33 +316,35 @@ Files touched: `agent.py`, `execution/executor.py`, `__main__.py`, `dashboard.py
 | T5 | TS read-only: connection + getPoolConfig/State + quote | `app/ts/src/state.ts, quote.ts` | devnet RPC | DONE stub → verify |
 | T6 | Anchor skeletons compile | `programs/*/src/lib.rs` | T1 dirs | DONE → `anchor build` verify |
 
-### P1 — 5 tasks, each needs ONE P0 output, disjoint files → parallel
-| ID | Task | Needs | Output | State |
-|---|---|---|---|---|
-| T7 | AuditTrail full verify + `anchor test` + export IDL | T6 | program + IDL + program ID | skeleton done |
-| T8 | Vault full verify + `anchor test` + export IDL | T6 | program + IDL + program ID | skeleton done |
-| T9 | `stock_carry.py` + `regime_hmm.py` + NEW `dbc_config.py` | T2+T3+T4 (read) | signals + config JSON | 2/3 done → write dbc_config.py |
-| T10 | TS create_config + create_pool + swap2 + migrate verify on devnet | T5 | working scripts + 1 devnet pool | stubs done → verify |
-| T11 | `audit_logger_sol.py` IDL sync + `meteora_executor.py` verify + risk_gate earnings flag + data_integrity corporate check | T2 | solana glue | shims done → small diffs |
+### P1 — actual outcomes (built live, not as specced — deltas noted)
+| ID | Task | Outcome |
+|---|---|---|
+| T7 | AuditTrail verify + IDL + program ID | DONE + DEPLOYED 516a5K… (hand-IDL + anchorpy Context fixes proven on-chain) |
+| T8 | Vault verify + IDL + program ID | DONE + DEPLOYED Gd7Ciu… (deposit flow untested — no devnet USDC) |
+| T9 | carry + regime + DBC config | DONE (dbc_config.py superseded: regime→`regimeScale` argv in create_config.js) |
+| T10 | TS scripts + devnet pools | DONE ×3 (config `3WDNBk…`, dAAPLx/dTSLAx/dNVDAx pools, live swaps; +wrap_sol/create_mint/inspect_signers) |
+| T11 | audit logger + executor + risk/integrity | DONE (all proven in T13 live cycle) |
 
-### P2 — integration, sequential, 1 agent (needs P1)
-| ID | Task | Needs | State |
-|---|---|---|---|
-| T12 | Wire loop §7 + 5 tests (bsm, carry, regime, risk_gate earnings, multi_leg Meteora step) | T7+T9+T10+T11 | todo |
-| T13 | Devnet deploy + demo (pool + 1 carry package + vault deposit→attest→withdraw + audit query) | T12+T8 | todo |
-| T14 | README + HACKATHON_SUBMISSION + video script + submit | T13 | drafts done → finalize with real tx hashes |
+### P2 — actual outcomes
+| ID | Task | State |
+|---|---|---|
+| T12 | Wire loop §7 | DONE (tested: 3/3/3 offline; live $5 cycle fully on-chain) |
+| T13 | Devnet demo + audit query | DONE (init/params/decision/swap/receipt txs banked; vault deposit pending) |
+| T14 | README + submission + video + submit | DOCS DONE (real IDs/txs, VIDEO_SCRIPT.md); VIDEO + SUBMIT open (human) |
 
 **Collision rule:** P0/P1 parallel OK (disjoint files). P2 single-threaded. `git status` clean between tasks.
 
 ---
 
-## 9. Submission checklist
-- [ ] Registered + Submit Project (edits allowed until close)
-- [ ] GitHub link + live devnet demo (mainnet preferred — Phase C) + video (2–3 min)
-- [ ] Main track: vault + carry + audit trail (§4.6–4.8 + §7)
-- [ ] DBC bounty: `dbc_config.py` + calm/stress configs + pool + README "Best Use of DBC"
-- [ ] Clawpump bounty: agent launch + stock-paired pool tx + earnings screenshot (or recorded transcript if key gated)
-- [ ] Solo team; invite teammates from submit form if any
+## 9. Submission checklist (actual, 2026-09-17)
+- [x] GitHub: https://github.com/Henoch4/Stockulus (public, pushed)
+- [x] Live devnet demo (evidence table in HACKATHON_SUBMISSION.md — every row Solscan-linked)
+- [x] Main track: vault (deployed) + carry (live signal) + audit trail (live receipts)
+- [x] DBC bounty: Token-2022 config + 3 pools + verified swaps + regime-tuned fee code
+- [ ] Clawpump bounty: agent live + key wired; token launch pending ~0.15 SOL funding
+- [ ] Video walkthrough (script: `docs/VIDEO_SCRIPT.md` — needs voice/screens, human)
+- [ ] Submit Project on hackathons.solana.com (human)
+- [x] Solo team (@henoch4)
 
 ---
 
@@ -403,4 +404,5 @@ Wire order: netflows → `onchain_flow_signal` → ensemble; historical → vali
 Drop into `docs/EQUATIONS.md`: (a) BSM variant (American? discrete divs?), (b) HMM priors/windows,
 (c) structured payoff beyond 90/10. Each fills ONE function (§3.8). Build proceeds without them.
 
-*End — next actions: T6 verify (`anchor build`), T9 write `dbc_config.py`, T10 devnet pool, T11 IDL sync.*
+*End — audited 2026-09-17. Open human items only: STCKLS funding (~0.15 SOL) → launch,
+video record (VIDEO_SCRIPT.md) → Submit Project. Next code: dTSLAx/dNVDAx seed swaps (dust).*
