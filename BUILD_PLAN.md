@@ -390,10 +390,13 @@ Phase A ships with neutral defaults; README cites Nansen as the Phase C source. 
 | Smart Alerts (Telegram/Slack/Discord) | `alerting.py` | Deterministic pivot triggers (rule-based, not learned) |
 | PnL Leaderboard | dashboard + curator | Reference carry wallets; copy-trading wedge for consumer track |
 
-**Phase C build (one file, env-gated):** `app/agent/nansen.py` (~80 lines, mirrors `xstocks.py`):
-`NansenClient(api_key)` with `smart_money_netflows(chains=["solana"])`, `token_holders(mint)`,
-`token_flows(mint)`, `screener(filters)`; 24h file cache so a cycle costs pennies at $0.01/query;
-missing key → neutral defaults (demo-safe, same fallback pattern as `regime_hmm.py` without hmmlearn).
+**Phase C build (SHIPPED as stub, key-activates):** `app/agent/nansen.py` — `NansenClient` wrapping the
+`nansen` CLI (same subprocess pattern as `meteora_executor.py`), 24h file cache, neutral defaults without key.
+Verified: no key → `available False`, zero network. Command surface (from nansen-cli SKILL.md):
+`screener --chain solana --timeframe 24h [--smart-money]`, `top-tokens`, `smart-money holdings`,
+`token indicators --token`, `token flow-intelligence --token` (credit-heavy, finalists only).
+Mappings: flow labels → `onchain_flow_inputs()` (whale+smart_trader, exchange sign);
+concentration_risk → `concentration_flag()` scream filter; screener → curator universe.
 Wire order: netflows → `onchain_flow_signal` → ensemble; historical → validation OOS; alerts → `alerting.py`.
 `.env` addition: `NANSEN_API_KEY=` (or x402 wallet path). Never commit the key (gitleaks CI).
 
