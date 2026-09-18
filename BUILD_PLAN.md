@@ -400,7 +400,9 @@ floor (default 20) fail-closed, 429 honors Retry-After once, insufficient/plan c
 latch off for the session. Labels endpoint (100/500cr) never called.
 Mappings: flow record → `onchain_flow_inputs()`; concentration-risk high →
 `concentration_flag()`; screener liquidity/volume → curator universe.
-24h file cache (6h flow). Verified neutral without key; live test = key in `.env`.
+24h file cache (6h flow). Verified neutral without key; LIVE 2026-09-18 on real mainnet
+AAPLx: whale +$27.4K, smart_trader −$55, exchange +$295K inflow (distribution read),
+mapping + concentration check correct, 6 credits spent (100→94, Free plan).
 Wire order: netflows → `onchain_flow_signal` → ensemble; historical → validation OOS; alerts → `alerting.py`.
 `.env` addition: `NANSEN_API_KEY=` (or x402 wallet path). Never commit the key (gitleaks CI).
 
