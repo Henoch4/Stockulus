@@ -95,7 +95,7 @@ class Dashboard:
         }
 
     def get_supporters(self) -> dict:
-        """Supporters wall — launch contributors, updated by hand per donation.
+        """Supporters wall - launch contributors, updated by hand per donation.
 
         Source: config/supporters.json ({"supporters": [{name, amount_sol, tx}]}).
         Zero dependencies, no chain calls; amounts verifiable against tx hashes.
@@ -114,6 +114,42 @@ class Dashboard:
             "count": len(supporters),
             "total_sol": round(sum(float(s.get("amount_sol", 0)) for s in supporters), 4),
             "supporters": supporters,
+        }
+
+    def get_fee_pipeline(self) -> dict:
+        """STCKLS fee pipeline — earned vs bought-back, updated per live execution.
+
+        Source: config/fee_ledger.json ({"buyback_wallet": str|None,
+        "entries": [{ts, kind, amount_usd, tx, note}]}).
+        kinds: "carry_earn" (swap/strategy fees), "creator_fee" (Clawpump/pump
+        creator cut claimed), "buyback" (STCKLS bought back).
+        Zero dependencies, no chain calls; amounts verifiable against tx hashes.
+        """
+        from pathlib import Path
+
+        path = Path(__file__).resolve().parent.parent.parent / "config" / "fee_ledger.json"
+        try:
+            import json
+
+            data = json.loads(path.read_text(encoding="utf-8"))
+            entries = data.get("entries", [])
+            buyback_wallet = data.get("buyback_wallet")
+        except (OSError, ValueError):
+            entries, buyback_wallet = [], None
+        earned = sum(
+            float(e.get("amount_usd", 0))
+            for e in entries
+            if e.get("kind") in ("carry_earn", "creator_fee")
+        )
+        bought = sum(
+            float(e.get("amount_usd", 0)) for e in entries if e.get("kind") == "buyback"
+        )
+        return {
+            "buyback_wallet": buyback_wallet,
+            "earned_usd": round(earned, 4),
+            "bought_back_usd": round(bought, 4),
+            "coverage": round(bought / earned, 4) if earned > 0 else 0.0,
+            "entries": entries,
         }
 
     # ─── Convenience endpoints for specific views ───
@@ -208,6 +244,14 @@ def create_dashboard_routes(app, dashboard: Dashboard):
     @app.get("/metrics/execution")
     async def execution_metrics():
         return dashboard.get_execution_summary()
+
+    @app.get("/metrics/fees")
+    async def fee_metrics():
+        return dashboard.get_fee_pipeline()
+
+    @app.get("/metrics/supporters")
+    async def supporter_metrics():
+        return dashboard.get_supporters()
 
     @app.get("/health")
     async def health():

@@ -168,6 +168,33 @@ def _dbc_pool_for_asset(asset: str) -> str:
     return pool
 
 
+# ─── Fee ledger (STCKLS value loop; best-effort, file-backed) ───
+
+def _record_ledger_fee(kind: str, amount_usd: float, tx: str, note: str = "") -> None:
+    """Append one entry to config/fee_ledger.json. Never raises."""
+    try:
+        import json as _json
+        import time as _time
+        from pathlib import Path as _Path
+
+        path = _Path(__file__).resolve().parent.parent.parent / "config" / "fee_ledger.json"
+        try:
+            data = _json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            data = {"buyback_wallet": None, "entries": []}
+        entries = data.setdefault("entries", [])
+        entries.append({
+            "ts": _time.time(),
+            "kind": kind,
+            "amount_usd": round(float(amount_usd), 6),
+            "tx": tx,
+            "note": note,
+        })
+        path.write_text(_json.dumps(data, indent=2), encoding="utf-8")
+    except Exception:
+        logger.debug("fee ledger write skipped", exc_info=True)
+
+
 # ─── Trading Cycle Result ───
 
 @dataclass
@@ -452,6 +479,15 @@ class AutonomousTradingAgent:
                     "status": "filled",
                 }
                 out["executions"].append(exec_result)
+
+                # Fee pipeline: ledger the reported fee (estimated until swap
+                # log-parsing lands). Best-effort — never break the cycle.
+                _record_ledger_fee(
+                    kind="carry_earn",
+                    amount_usd=float(swap_result.fee or 0.0),
+                    tx=swap_result.tx,
+                    note=f"{asset} DBC swap fee (reported, estimated)",
+                )
 
                 # Record pattern PnL
                 for sig in signals:

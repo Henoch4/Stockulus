@@ -1,0 +1,5 @@
+{
+  "_note": "STCKLS fee pipeline — every fee the system earns, tracked toward buybacks. Entries appended by the agent on each live execution + by hand for creator-fee claims. Amounts verifiable against tx hashes.",
+  "buyback_wallet": null,
+  "entries": []
+}
