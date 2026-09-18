@@ -390,13 +390,17 @@ Phase A ships with neutral defaults; README cites Nansen as the Phase C source. 
 | Smart Alerts (Telegram/Slack/Discord) | `alerting.py` | Deterministic pivot triggers (rule-based, not learned) |
 | PnL Leaderboard | dashboard + curator | Reference carry wallets; copy-trading wedge for consumer track |
 
-**Phase C build (SHIPPED as stub, key-activates):** `app/agent/nansen.py` — `NansenClient` wrapping the
-`nansen` CLI (same subprocess pattern as `meteora_executor.py`), 24h file cache, neutral defaults without key.
-Verified: no key → `available False`, zero network. Command surface (from nansen-cli SKILL.md):
-`screener --chain solana --timeframe 24h [--smart-money]`, `top-tokens`, `smart-money holdings`,
-`token indicators --token`, `token flow-intelligence --token` (credit-heavy, finalists only).
-Mappings: flow labels → `onchain_flow_inputs()` (whale+smart_trader, exchange sign);
-concentration_risk → `concentration_flag()` scream filter; screener → curator universe.
+**Phase C build (SHIPPED, docs-verified, key-activates):** `app/agent/nansen.py` — direct REST
+(`httpx`, mirrors `xstocks.py`), NOT the CLI wrapper. Exact paths (docs.nansen.ai OpenAPI):
+`POST /api/v1/token-screener` (1cr), `/api/v1/smart-money/netflow` (5cr),
+`/api/v1/smart-money/holdings` (5cr), `/api/v1/tgm/flow-intelligence` (1cr),
+`/api/v1/tgm/indicators` (5cr, daily batch). Chain slugs lowercase (`solana`).
+Budget discipline: `X-Nansen-Credits-Remaining` tracked per call, `NANSEN_MIN_CREDITS`
+floor (default 20) fail-closed, 429 honors Retry-After once, insufficient/plan codes
+latch off for the session. Labels endpoint (100/500cr) never called.
+Mappings: flow record → `onchain_flow_inputs()`; concentration-risk high →
+`concentration_flag()`; screener liquidity/volume → curator universe.
+24h file cache (6h flow). Verified neutral without key; live test = key in `.env`.
 Wire order: netflows → `onchain_flow_signal` → ensemble; historical → validation OOS; alerts → `alerting.py`.
 `.env` addition: `NANSEN_API_KEY=` (or x402 wallet path). Never commit the key (gitleaks CI).
 

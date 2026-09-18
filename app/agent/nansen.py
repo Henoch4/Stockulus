@@ -1,76 +1,133 @@
-"""Nansen on-chain intelligence adapter — env-gated, neutral without a key.
+"""Nansen on-chain intelligence adapter — direct REST, env-gated, budget-guarded.
 
-Phase C integration (BUILD_PLAN §10.1). Wraps the `nansen` CLI (npm `nansen-cli`)
-via subprocess — same pattern as meteora_executor.py — so no new Python deps.
+Docs: https://docs.nansen.ai (probed 2026-09-18; shapes below are per OpenAPI).
+Auth: `apikey` header (docs/getting-started/authentication). Base: https://api.nansen.ai.
+No key (or placeholder) → every method returns documented neutrals, zero network.
 
-Auth: NANSEN_API_KEY env (see Nansen skill metadata: primaryEnv NANSEN_API_KEY,
-binary `nansen`). Missing key OR missing binary → every method returns a
-documented neutral default. Importing this module never touches the network.
+Exact endpoints (all POST JSON):
+  screener:   /api/v1/token-screener
+              {chains: ["solana"], timeframe: "24h", filters: {trader_type, liquidity, ...},
+               order_by, pagination} — 1 credit, point-in-time, no server cache.
+  netflow:    /api/v1/smart-money/netflow
+              {chains: ["solana"], filters: {token_address, ...}, order_by} — 5 credits,
+              rolling 1h/24h/7d/30d windows, 30d retention only.
+  holdings:   /api/v1/smart-money/holdings
+              {chains: ["solana"], filters: {token_address, ...}} — 5 credits, point-in-time.
+  flow:       /api/v1/tgm/flow-intelligence
+              {chain: "solana", token_address, timeframe: 5m/1h/6h/12h/1d/7d} — 1 credit,
+              live 24h, server cache 10–30m. Labels: whale/smart_trader/exchange/
+              fresh_wallets/top_pnl/public_figure (+ *_avg_flow_usd, *_wallet_count).
+  indicators: /api/v1/tgm/indicators
+              {chain: "solana", token_address} — 5 credits, DAILY batch (not realtime).
+              risk_indicators[] + reward_indicators[] of {indicator_type, score,
+              signal, signal_percentile, last_trigger_on}.
 
-Command surface (from nansen-cli skills/nansen-token-screener/SKILL.md):
-  screener:        nansen research token screener --chain solana --timeframe 24h [--smart-money]
-  top-tokens:      nansen research token top-tokens [--market-cap largecap]
-  sm-holdings:     nansen research smart-money holdings --chain solana
-  indicators:      nansen research token indicators --token ADDR --chain solana
-  flow-intel:      nansen research token flow-intelligence --token ADDR --chain solana
-                   (credit-heavy — finalists only, never a first pass)
+Budget discipline (RiskGate spirit, applied to credits):
+  - X-Nansen-Credits-Remaining tracked after every call; new calls refused below
+    NANSEN_MIN_CREDITS (default 20) — fail-closed, never drain the account.
+  - 429 → honor Retry-After once, then give up (no hot loops in the agent cycle).
+  - insufficient_credits / plan_upgrade_required → latch off for the session.
+  - profiler/address/labels (100/500 credits) is NEVER called from here.
 
 Mappings into Tarstrade signals:
-  flow-intelligence labels {smart_trader, whale, exchange, fresh_wallets}
-      → onchain_flow_signal(whale_net_flow_usd, exchange_reserve_change_pct, ...)
-  indicators.concentration_risk → holder-concentration scream filter (EXPANSION_ROADMAP)
-  indicators risk/reward scores → regime/curator context (skip when empty — not an error)
-  screener/top-tokens → curator carry-universe screening (min liquidity for 16bps hurdle)
+  flow record → onchain_flow_inputs(): whale+smart_trader sum, exchange sign.
+  indicators concentration-risk score high → concentration_flag() scream filter.
+  screener (liquidity/volume/min-mcap) → curator carry-universe screening.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
-import os
-import shutil
-import subprocess
 import time
 from pathlib import Path
 from typing import Any
 
+import httpx
+
 logger = logging.getLogger(__name__)
 
+BASE = "https://api.nansen.ai"
 CHAIN = "solana"
+CHAINS = ["solana"]
 CACHE_TTL_S = 24 * 3600
+FLOW_CACHE_TTL_S = 6 * 3600
+
+# Credit costs (docs/getting-started/credits). Used for pre-flight budgeting.
+COST = {
+    "token-screener": 1,
+    "smart-money/netflow": 5,
+    "smart-money/holdings": 5,
+    "tgm/flow-intelligence": 1,
+    "tgm/indicators": 5,
+}
+
+# Stable error codes that latch the client off for the session (docs error envelope).
+LATCH_OFF_CODES = {"insufficient_credits", "plan_upgrade_required", "forbidden"}
 
 
 def _cache_dir() -> Path:
+    import os
+    import tempfile
+
     d = Path(os.getenv("NANSEN_CACHE_DIR", "") or "").expanduser()
     if not d.name:
-        import tempfile
-
         d = Path(tempfile.gettempdir()) / "stockulus_nansen"
     d.mkdir(parents=True, exist_ok=True)
     return d
 
 
 class NansenClient:
-    """Thin CLI wrapper. All reads cached 24h (file cache keeps x402/API pennies per cycle)."""
+    def __init__(
+        self,
+        api_key: str | None = None,
+        chain: str = CHAIN,
+        min_credits: int | None = None,
+        timeout: float = 30.0,
+    ):
+        import os
 
-    def __init__(self, api_key: str | None = None, chain: str = CHAIN):
-        self.api_key = api_key or os.getenv("NANSEN_API_KEY", "")
+        key = (api_key or os.getenv("NANSEN_API_KEY", "") or "").strip()
+        self.api_key = "" if key.startswith("nansen_xxx") else key
         self.chain = chain
-        self._bin = shutil.which("nansen")
+        self.timeout = timeout
+        self.min_credits = (
+            int(os.getenv("NANSEN_MIN_CREDITS", "20"))
+            if min_credits is None
+            else min_credits
+        )
+        self._client: httpx.AsyncClient | None = None
+        self._latched_off = False
+        self.credits_remaining: float | None = None
 
     @property
     def available(self) -> bool:
-        """False when key or binary missing — callers must use neutral defaults."""
-        key = (self.api_key or "").strip()
-        return bool(key) and not key.startswith("nansen_xxx") and self._bin is not None
+        return bool(self.api_key) and not self._latched_off
+
+    async def _get_client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            self._client = httpx.AsyncClient(
+                base_url=BASE,
+                timeout=self.timeout,
+                headers={"Content-Type": "application/json", "apikey": self.api_key},
+            )
+        return self._client
+
+    async def close(self):
+        if self._client:
+            await self._client.aclose()
+            self._client = None
+
+    # --- internals ---
 
     def _cache_path(self, name: str) -> Path:
         safe = "".join(c if c.isalnum() else "_" for c in f"{self.chain}_{name}")[:80]
         return _cache_dir() / f"{safe}.json"
 
-    def _cached(self, name: str) -> Any | None:
+    def _cached(self, name: str, ttl: int) -> Any | None:
         try:
             p = self._cache_path(name)
-            if not p.exists() or time.time() - p.stat().st_mtime > CACHE_TTL_S:
+            if not p.exists() or time.time() - p.stat().st_mtime > ttl:
                 return None
             return json.loads(p.read_text(encoding="utf-8"))
         except (OSError, ValueError):
@@ -82,138 +139,240 @@ class NansenClient:
         except OSError:
             pass
 
-    def _run(self, *args: str, cache_name: str | None = None, timeout: int = 60) -> Any | None:
-        """Run `nansen ...`, parse stdout JSON. None on any failure (key/binary/RPC)."""
+    async def _post(
+        self, path: str, body: dict, cache_name: str | None = None, ttl: int = CACHE_TTL_S
+    ) -> Any | None:
+        """POST one endpoint. Returns parsed JSON or None (never raises)."""
         if not self.available:
             return None
         if cache_name:
-            hit = self._cached(cache_name)
+            hit = self._cached(cache_name, ttl)
             if hit is not None:
                 return hit
-        env = {**os.environ, "NANSEN_API_KEY": self.api_key, "CHAIN": self.chain}
-        try:
-            proc = subprocess.run(
-                [self._bin, *args], capture_output=True, text=True, env=env, timeout=timeout
+        if self.credits_remaining is not None and self.credits_remaining < self.min_credits:
+            logger.warning(
+                f"nansen budget floor: {self.credits_remaining} < {self.min_credits}, skipping {path}"
             )
-        except (OSError, subprocess.SubprocessError) as e:
-            logger.debug(f"nansen CLI failed: {e}")
             return None
-        if proc.returncode != 0:
-            logger.debug(f"nansen CLI error: {proc.stderr[:200]}")
+        client = await self._get_client()
+        try:
+            resp = await client.post(path, json=body)
+        except httpx.HTTPError as e:
+            logger.debug(f"nansen transport error on {path}: {e}")
+            return None
+        self._track_credits(resp)
+        if resp.status_code == 429:
+            await self._handle_429(path, body, resp)
+            return None
+        if resp.status_code in (401, 403):
+            logger.warning(f"nansen auth/forbidden on {path} ({resp.status_code})")
+            if resp.status_code == 403:
+                self._latched_off = True
+            return None
+        if resp.status_code != 200:
+            self._check_latch(resp)
+            logger.debug(f"nansen {path} -> {resp.status_code}: {resp.text[:200]}")
             return None
         try:
-            data = json.loads(proc.stdout.strip())
+            data = resp.json()
         except ValueError:
             return None
         if cache_name:
             self._store(cache_name, data)
         return data
 
-    # --- Discovery (cheap first pass) ---
+    def _track_credits(self, resp: httpx.Response) -> None:
+        try:
+            rem = resp.headers.get("x-nansen-credits-remaining")
+            if rem is not None:
+                self.credits_remaining = float(rem)
+        except (TypeError, ValueError):
+            pass
 
-    def top_tokens(self, market_cap: str | None = None, limit: int = 25) -> list[dict]:
-        args = ["research", "token", "top-tokens", "--limit", str(limit)]
-        if market_cap:
-            args += ["--market-cap", market_cap]
-        data = self._run(*args, cache_name=f"top_{market_cap or 'all'}_{limit}")
-        return _as_list(data)
+    async def _handle_429(self, path: str, body: dict, resp: httpx.Response) -> None:
+        try:
+            wait = int(resp.headers.get("retry-after", "30"))
+        except (TypeError, ValueError):
+            wait = 30
+        logger.warning(f"nansen 429 on {path}, single retry after {min(wait, 120)}s")
+        await asyncio.sleep(min(wait, 120))
+        # One retry only; result intentionally discarded on failure (no hot loop).
+        try:
+            client = await self._get_client()
+            retry = await client.post(path, json=body)
+            self._track_credits(retry)
+        except httpx.HTTPError:
+            pass
 
-    def screener(
-        self, timeframe: str = "24h", smart_money: bool = False, limit: int = 20
+    def _check_latch(self, resp: httpx.Response) -> None:
+        try:
+            code = (resp.json().get("code") or "").strip()
+        except ValueError:
+            return
+        if code in LATCH_OFF_CODES:
+            logger.warning(f"nansen latched off for session: {code}")
+            self._latched_off = True
+
+    @staticmethod
+    def _records(data: Any) -> list[dict]:
+        if isinstance(data, dict):
+            data = data.get("data", [])
+        if isinstance(data, list):
+            return [d for d in data if isinstance(d, dict)]
+        return []
+
+    # --- Discovery (cheap first pass: 1 credit) ---
+
+    async def token_screener(
+        self,
+        timeframe: str = "24h",
+        trader_type: str = "sm",
+        min_liquidity_usd: float = 50000,
+        min_volume_usd: float = 10000,
+        limit: int = 20,
     ) -> list[dict]:
-        args = ["research", "token", "screener", "--chain", self.chain,
-                "--timeframe", timeframe, "--limit", str(limit)]
-        if smart_money:
-            args.append("--smart-money")
-        data = self._run(*args, cache_name=f"screener_{timeframe}_{int(smart_money)}_{limit}")
-        return _as_list(data)
-
-    def smart_money_holdings(self, limit: int = 20) -> list[dict]:
-        data = self._run(
-            "research", "smart-money", "holdings",
-            "--chain", self.chain, "--labels", "Smart Trader", "--limit", str(limit),
-            cache_name=f"sm_holdings_{limit}",
+        """Carry-universe screening: liquid + smart-traded tokens on Solana."""
+        data = await self._post(
+            "/api/v1/token-screener",
+            {
+                "chains": CHAINS,
+                "timeframe": timeframe,
+                "filters": {
+                    "trader_type": trader_type,
+                    "liquidity": {"min": min_liquidity_usd},
+                    "volume": {"min": min_volume_usd},
+                    "include_stablecoins": False,
+                },
+                "order_by": [{"field": "volume", "direction": "DESC"}],
+                "pagination": {"page": 1, "per_page": limit},
+            },
+            cache_name=f"screener_{timeframe}_{trader_type}_{limit}",
         )
-        return _as_list(data)
+        return self._records(data)
 
-    # --- Per-token drill-down (finalists only; flow-intel is credit-heavy) ---
+    # --- Smart Money (5 credits each — cache aggressively) ---
 
-    def token_indicators(self, token_mint: str) -> dict:
-        """Risk/reward scores. Empty dict is normal (not an error)."""
-        data = self._run(
-            "research", "token", "indicators",
-            "--token", token_mint, "--chain", self.chain,
+    async def smart_money_netflow(
+        self, token_address: str | None = None, limit: int = 20
+    ) -> list[dict]:
+        """Net accumulation/distribution by smart money (1h/24h/7d/30d windows)."""
+        filters: dict = {}
+        if token_address:
+            filters["token_address"] = token_address
+        data = await self._post(
+            "/api/v1/smart-money/netflow",
+            {
+                "chains": CHAINS,
+                "filters": filters,
+                "order_by": [{"field": "net_flow_7d_usd", "direction": "DESC"}],
+                "pagination": {"page": 1, "per_page": limit},
+            },
+            cache_name=f"netflow_{token_address or 'all'}_{limit}",
+        )
+        return self._records(data)
+
+    async def smart_money_holdings(
+        self, token_address: str | None = None, limit: int = 20
+    ) -> list[dict]:
+        """Point-in-time aggregated holdings (+24h change)."""
+        filters: dict = {}
+        if token_address:
+            filters["token_address"] = token_address
+        data = await self._post(
+            "/api/v1/smart-money/holdings",
+            {
+                "chains": CHAINS,
+                "filters": filters,
+                "order_by": [{"field": "value_usd", "direction": "DESC"}],
+                "pagination": {"page": 1, "per_page": limit},
+            },
+            cache_name=f"holdings_{token_address or 'all'}_{limit}",
+        )
+        return self._records(data)
+
+    # --- Per-token drill-down ---
+
+    async def flow_intelligence(
+        self, token_mint: str, timeframe: str = "1d"
+    ) -> dict:
+        """Per-label net flows. 1 credit; server-cached 10–30m; our file cache 6h."""
+        data = await self._post(
+            "/api/v1/tgm/flow-intelligence",
+            {"chain": self.chain, "token_address": token_mint, "timeframe": timeframe},
+            cache_name=f"flow_{token_mint[:16]}_{timeframe}",
+            ttl=FLOW_CACHE_TTL_S,
+        )
+        records = self._records(data)
+        return records[0] if records else {}
+
+    async def indicators(self, token_mint: str) -> dict:
+        """Risk/reward indicator groups. 5 credits; DAILY batch (not realtime)."""
+        data = await self._post(
+            "/api/v1/tgm/indicators",
+            {"chain": self.chain, "token_address": token_mint},
             cache_name=f"indicators_{token_mint[:16]}",
-        )
-        return data if isinstance(data, dict) else {}
-
-    def flow_intelligence(self, token_mint: str) -> dict:
-        """Net-flow USD per label {smart_trader, whale, exchange, fresh_wallets, ...}."""
-        data = self._run(
-            "research", "token", "flow-intelligence",
-            "--token", token_mint, "--chain", self.chain,
-            cache_name=f"flow_{token_mint[:16]}",
         )
         return data if isinstance(data, dict) else {}
 
     # --- Mapping into Tarstrade signal inputs ---
 
-    def onchain_flow_inputs(self, token_mint: str) -> dict:
-        """Map flow-intelligence → onchain_flow_signal() kwargs.
+    async def onchain_flow_inputs(self, token_mint: str) -> dict:
+        """Map flow-intelligence record → onchain_flow_signal() kwargs.
 
-        Neutral zeros when unavailable — the ensemble treats missing flow as
-        no-evidence, never as a signal (same fallback as regime_hmm w/o hmmlearn).
+        Neutral zeros when unavailable — missing flow is no-evidence, never signal.
         """
         neutral = {
             "whale_net_flow_usd": 0.0,
             "exchange_reserve_change_pct": 0.0,
             "stablecoin_supply_change_pct": 0.0,
         }
-        flows = self.flow_intelligence(token_mint)
-        if not flows:
+        rec = await self.flow_intelligence(token_mint)
+        if not rec:
             return neutral
-        labels = flows.get("net_flow_usd", flows) if isinstance(flows, dict) else {}
         try:
-            return {
-                "whale_net_flow_usd": float(labels.get("whale", 0.0) or 0.0)
-                + float(labels.get("smart_trader", 0.0) or 0.0),
-                # Exchange net inflow GLASSNODE-style proxy: +inflow = distribution.
-                "exchange_reserve_change_pct": _sign_pct(labels.get("exchange", 0.0)),
-                "stablecoin_supply_change_pct": 0.0,  # stablecoin leg needs screener-level data
-            }
+            whale = float(rec.get("whale_net_flow_usd", 0.0) or 0.0)
+            smart = float(rec.get("smart_trader_net_flow_usd", 0.0) or 0.0)
+            exch = float(rec.get("exchange_net_flow_usd", 0.0) or 0.0)
         except (TypeError, ValueError):
             return neutral
+        return {
+            "whale_net_flow_usd": whale + smart,
+            # Exchange net inflow GLASSNODE-style proxy: +inflow = distribution.
+            "exchange_reserve_change_pct": 1.0 if exch > 0 else (-1.0 if exch < 0 else 0.0),
+            "stablecoin_supply_change_pct": 0.0,  # stablecoin leg needs screener-level data
+        }
 
-    def concentration_flag(self, token_mint: str) -> dict:
+    async def concentration_flag(self, token_mint: str) -> dict:
         """Holder-concentration scream filter (EXPANSION_ROADMAP pattern).
 
-        Returns {"concentrated": bool, "reason": str}. Unavailable → not concentrated.
+        indicators[].risk_indicators entry with indicator_type containing
+        "concentration" and score "high" → concentrated. Unavailable → False.
         """
-        ind = self.token_indicators(token_mint)
-        risk = (ind.get("concentration_risk") or ind.get("concentration") or "")
-        if isinstance(risk, dict):
-            sig = str(risk.get("signal", "")).lower()
-            if sig == "bearish" or "high" in str(risk.get("score", "")).lower():
-                return {"concentrated": True, "reason": f"nansen concentration: {risk}"}
+        ind = await self.indicators(token_mint)
+        for entry in ind.get("risk_indicators", []) or []:
+            if not isinstance(entry, dict):
+                continue
+            if "concentration" in str(entry.get("indicator_type", "")).lower():
+                if str(entry.get("score", "")).lower() == "high":
+                    return {
+                        "concentrated": True,
+                        "reason": f"nansen concentration-risk high "
+                        f"(pctl {entry.get('signal_percentile')})",
+                    }
+                return {"concentrated": False, "reason": "concentration-risk not high"}
         return {"concentrated": False, "reason": "no concentration signal"}
 
 
-def _as_list(data: Any) -> list[dict]:
-    if isinstance(data, list):
-        return [d for d in data if isinstance(d, dict)]
-    if isinstance(data, dict):
-        for key in ("tokens", "data", "items", "nodes", "results"):
-            if isinstance(data.get(key), list):
-                return [d for d in data[key] if isinstance(d, dict)]
-    return []
-
-
-def _sign_pct(value: Any) -> float:
+async def demo():
+    client = NansenClient()
     try:
-        v = float(value or 0.0)
-    except (TypeError, ValueError):
-        return 0.0
-    if v == 0:
-        return 0.0
-    # Direction only at this granularity (flow-intel gives levels, not % changes).
-    return 1.0 if v > 0 else -1.0
+        print("available:", client.available)
+        print("flow inputs (neutral):", await client.onchain_flow_inputs("So11111111111111111111111111111111111111112"))
+    finally:
+        await client.close()
+
+
+if __name__ == "__main__":
+    import asyncio
+
+    asyncio.run(demo())
