@@ -168,6 +168,10 @@ jobs:
           )"
           CAPACITY="$((DATA_LEN - 45))"
           ADDITIONAL="$((SO_BYTES + 10240 - CAPACITY))"
+          # Loader floor: ExtendProgram rejects anything under 10240 bytes.
+          if [ "$ADDITIONAL" -gt 0 ] && [ "$ADDITIONAL" -lt 10240 ]; then
+            ADDITIONAL=10240
+          fi
           echo "so=$SO_BYTES capacity=$CAPACITY additional=$ADDITIONAL"
           if [ "$ADDITIONAL" -gt 0 ]; then
             code=0
@@ -233,8 +237,8 @@ jobs:
           {
             echo "Upgrade run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             echo "Program: ${VAULT_PROGRAM_ID}"
-            echo "--- build log head (real errors live here) ---"
-            head -80 /tmp/build.log 2>/dev/null || echo "(no build log)"
+            echo "--- build errors (if any) ---"
+            grep -B2 -A8 -iE '^error(\[|:)' /tmp/build.log 2>/dev/null | head -60 || echo "(build clean)"
             echo "--- build log tail ---"
             tail -20 /tmp/build.log 2>/dev/null || echo "(no build log)"
             echo "--- reclaim log ---"
