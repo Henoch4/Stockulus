@@ -100,7 +100,6 @@ jobs:
             solana program write-buffer target/deploy/trading_vault.so \
               -k config/ci/deployer.json \
               -u "$SOLANA_RPC_URL" \
-              --buffer-authority config/ci/deployer.json \
               > /tmp/buffer_$i.log 2>&1 || code=$?
             echo "write-buffer attempt $i exit: $code"
             tail -8 /tmp/buffer_$i.log || true
@@ -196,6 +195,8 @@ jobs:
           {
             echo "Upgrade run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             echo "Program: ${VAULT_PROGRAM_ID}"
+            echo "--- buffer log tail ---"
+            tail -20 /tmp/buffer_full.log 2>/dev/null || echo "(no buffer log)"
             echo "--- extend log tail ---"
             tail -20 /tmp/extend_full.log 2>/dev/null || echo "(no extend log)"
             echo "--- upgrade log tail ---"
