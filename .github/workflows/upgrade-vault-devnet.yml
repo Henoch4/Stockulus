@@ -17,6 +17,8 @@ env:
   # (docs, desk, and submission all link it). Fresh deploys mint new IDs;
   # use deploy-devnet.yml only for brand-new programs.
   VAULT_PROGRAM_ID: "Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF"
+  # ProgramData account for the vault program (immutable once deployed).
+  PROGRAMDATA_ADDRESS: "DhWaUd89UBZbJP8MNXcqSFbDm1rVX6Cxk8sYoAmzUVN4"
 
 jobs:
   upgrade:
@@ -108,6 +110,48 @@ jobs:
           cat /tmp/buffer_*.log > /tmp/buffer_full.log
           exit "$code"
 
+      - name: Extend ProgramData for larger binary (if needed)
+        # Upgrades fail with "ProgramData account not large enough" when the
+        # new .so exceeds the original allocation. Compare raw sizes via
+        # JSON-RPC (no CLI output-format guessing) and extend with 10 KiB
+        # headroom for future upgrades.
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          SO_BYTES="$(stat -c%s target/deploy/trading_vault.so)"
+          DATA_LEN="$(python3 - "$SOLANA_RPC_URL" "$PROGRAMDATA_ADDRESS" <<'PY'
+          import base64, json, sys, urllib.request
+          rpc, addr = sys.argv[1], sys.argv[2]
+          body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo",
+                             "params": [addr, {"encoding": "base64"}]}).encode()
+          req = urllib.request.Request(rpc, data=body, headers={"Content-Type": "application/json"})
+          data = json.load(urllib.request.urlopen(req, timeout=30))["result"]["value"]["data"][0]
+          print(len(base64.b64decode(data)))
+          PY
+          )"
+          CAPACITY="$((DATA_LEN - 45))"
+          ADDITIONAL="$((SO_BYTES + 10240 - CAPACITY))"
+          echo "so=$SO_BYTES capacity=$CAPACITY additional=$ADDITIONAL"
+          if [ "$ADDITIONAL" -gt 0 ]; then
+            code=0
+            for i in 1 2 3; do
+              code=0
+              solana program extend "$VAULT_PROGRAM_ID" "$ADDITIONAL" \
+                -k config/ci/deployer.json \
+                -u "$SOLANA_RPC_URL" \
+                --upgrade-authority config/ci/deployer.json \
+                > "/tmp/extend_$i.log" 2>&1 || code=$?
+              echo "extend attempt $i exit: $code"
+              tail -10 "/tmp/extend_$i.log" || true
+              if [ "$code" -eq 0 ]; then break; fi
+              sleep 20
+            done
+            cat /tmp/extend_*.log > /tmp/extend_full.log
+            exit "$code"
+          else
+            echo "no extension needed"
+          fi
+
       - name: Upgrade trading_vault in place
         shell: bash
         run: |
@@ -153,6 +197,8 @@ jobs:
           {
             echo "Upgrade run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             echo "Program: ${VAULT_PROGRAM_ID}"
+            echo "--- extend log tail ---"
+            tail -20 /tmp/extend_full.log 2>/dev/null || echo "(no extend log)"
             echo "--- upgrade log tail ---"
             tail -60 /tmp/upgrade_full.log 2>/dev/null || echo "(no upgrade log)"
             echo "--- CLI diagnostics ---"
