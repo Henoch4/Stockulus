@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard — Stockulus</title>
+<meta name="description" content="Stockulus' live desk — real devnet deployment, real proven trade, real safety limits.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="ruler left"></div>
+<div class="ruler right"></div>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="wordmark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg>
+      STOCKULUS <span class="agent-id">/ stockulus-demo</span>
+    </a>
+    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="system.html">System</a></li>
+      <li><a href="dashboard.html" aria-current="page">Dashboard</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+    <a href="docs.html" class="nav-cta">Run it yourself</a>
+  </nav>
+</header>
+
+<main>
+  <section class="wrap" style="padding:44px 0 24px">
+    <div class="status-row" style="margin-bottom:22px">
+      <span class="pill" id="pill-kill"><span class="dot"></span>Kill switch clear</span>
+      <span class="pill off" id="pill-dry"><span class="dot"></span>Dry run</span>
+      <span class="pill"><span class="dot"></span>Devnet</span>
+      <span class="pill off" id="pill-live"><span class="dot"></span>Offline snapshot</span>
+    </div>
+    <h1 style="font-size:clamp(30px,4vw,44px);max-width:18ch">The desk, not the pitch deck.</h1>
+    <p class="lede" style="margin-top:16px;font-size:17px">Everything below is either read straight from Stockulus' real devnet deployment, or clearly marked as a preview of what fills in once the vault is funded and the agent runs continuously.</p>
+    <p id="live-note" style="margin-top:16px;font-family:var(--mono);font-size:12.5px;color:var(--slate-dim);border-left:2px solid var(--line-strong);padding-left:12px;max-width:60ch">Offline snapshot — start the agent server (<span class="mono">python -m app.agent.serve</span>) for live numbers from <span class="mono">/metrics/*</span>.</p>
+  </section>
+
+  <section class="wrap">
+    <div class="stats">
+      <div class="stat"><div class="v">$0</div><div class="l">Value in the vault right now</div></div>
+      <div class="stat"><div class="v" id="stat-regime">Calm</div><div class="l">Current market regime</div></div>
+      <div class="stat"><div class="v"><span id="stat-conf">70%</span></div><div class="l">Minimum confidence Stockulus requires to trade</div></div>
+      <div class="stat"><div class="v" id="stat-trades">1</div><div class="l">Real trades proven on devnet</div></div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="section-head" style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
+      <h2 style="font-size:22px">What Stockulus is holding</h2>
+      <span class="mono" style="font-size:12.5px;color:var(--slate-dim)">3 tokenized stocks tracked</span>
+    </div>
+    <div class="card">
+      <div class="empty">
+        <div class="headline">No open positions yet</div>
+        <p>Stockulus hasn't taken a live position with real deposits yet — the vault is still waiting to be funded. Once it is, this table fills in with each stock's position, its basis to spot, and which way Stockulus is leaning.</p>
+      </div>
+      <table class="spec-table" style="margin-top:10px">
+        <tr><td style="color:var(--slate-dim);font-size:11.5px">Asset</td><td style="color:var(--slate-dim);font-size:11.5px;text-align:right">Status</td></tr>
+        <tr><td>AAPLx</td><td style="text-align:right">Watching</td></tr>
+        <tr><td>TSLAx</td><td style="text-align:right">Watching</td></tr>
+        <tr><td>NVDAx</td><td style="text-align:right">Watching</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="section-head" style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
+      <h2 style="font-size:22px">Decision log</h2>
+      <span class="mono" style="font-size:12.5px;color:var(--slate-dim)">Written on-chain before every trade</span>
+    </div>
+    <div class="feed" id="feed"></div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="section-head" style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
+      <h2 style="font-size:22px">Safety limits</h2>
+      <span class="mono" style="font-size:12.5px;color:var(--slate-dim)">Enforced in code — the agent can't trade around these</span>
+    </div>
+    <div class="card-grid">
+      <div class="card" style="text-align:center"><div class="mono" style="font-size:24px;font-weight:600" id="risk-pos">$100</div><div style="margin-top:6px;color:var(--slate);font-size:13px">Largest single position</div></div>
+      <div class="card" style="text-align:center"><div class="mono" style="font-size:24px;font-weight:600" id="risk-loss">$20</div><div style="margin-top:6px;color:var(--slate);font-size:13px">Most it can lose in a day</div></div>
+      <div class="card" style="text-align:center"><div class="mono" style="font-size:24px;font-weight:600" id="risk-trades">10 / 1.0×</div><div style="margin-top:6px;color:var(--slate);font-size:13px">Trades per day / leverage (none)</div></div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="section-head" style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
+      <h2 style="font-size:22px">On-chain proof</h2>
+      <span class="mono" style="font-size:12.5px;color:var(--slate-dim)">Public devnet addresses — check them yourself</span>
+    </div>
+    <div class="receipt-grid">
+      <div class="receipt">
+        <div class="k">Decision &amp; safety-limit program</div>
+        <div class="addr">516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS</div>
+        <a class="open" href="https://solscan.io/account/516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS?cluster=devnet" target="_blank" rel="noopener">View on Solscan →</a>
+      </div>
+      <div class="receipt">
+        <div class="k">Vault program</div>
+        <div class="addr">Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF</div>
+        <a class="open" href="https://solscan.io/account/Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF?cluster=devnet" target="_blank" rel="noopener">View on Solscan →</a>
+      </div>
+      <div class="receipt">
+        <div class="k">AAPLx trading pool</div>
+        <div class="addr">CVrD4XycbRgMhWjr6tTQ6ebV41NGAG95cV8NccCvvPUU</div>
+        <a class="open" href="https://solscan.io/account/CVrD4XycbRgMhWjr6tTQ6ebV41NGAG95cV8NccCvvPUU?cluster=devnet" target="_blank" rel="noopener">View on Solscan →</a>
+      </div>
+      <div class="receipt">
+        <div class="k">TSLAx trading pool</div>
+        <div class="addr">84B8P25ec51c2szffJUEkkyMpUf81eqBFWHNH9pwDEsU</div>
+        <a class="open" href="https://solscan.io/account/84B8P25ec51c2szffJUEkkyMpUf81eqBFWHNH9pwDEsU?cluster=devnet" target="_blank" rel="noopener">View on Solscan →</a>
+      </div>
+      <div class="receipt">
+        <div class="k">NVDAx trading pool</div>
+        <div class="addr">EebJJc253Rg5BJgiHCMkvGo2GzieZToSkDKvtw2FhqdH</div>
+        <a class="open" href="https://solscan.io/account/EebJJc253Rg5BJgiHCMkvGo2GzieZToSkDKvtw2FhqdH?cluster=devnet" target="_blank" rel="noopener">View on Solscan →</a>
+      </div>
+      <div class="receipt tx">
+        <div class="k">First real swap — proof the pipeline works end to end</div>
+        <div class="addr">0.03 wSOL → 29,699 dAAPLx</div>
+        <a class="open" href="https://solscan.io/tx/AvubGLJ8q4JiF4ub5ejVmbjBZjMXiu9aBX2gJNxGsasXR8D5tNS6eezHiSQC61vsFMS2fKggq9AF87HQ3afmLoD?cluster=devnet" target="_blank" rel="noopener">View transaction →</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="section-head" style="display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:22px">
+      <h2 style="font-size:22px">Where the fees go</h2>
+      <span class="mono" style="font-size:12.5px;color:var(--slate-dim)">Every fee Stockulus earns, tracked toward buying back STCKLS</span>
+    </div>
+    <div class="split" style="gap:1px;background:var(--line);border:1px solid var(--line)">
+      <div class="card" style="border:none">
+        <div class="empty">
+          <div class="headline" id="fee-headline">$0 earned so far</div>
+          <p>Stockulus hasn't executed a live, fee-generating trade yet. The moment it does, the fee shows up here and a matching buyback gets tracked against it — both sides verifiable against a transaction hash, never just a claimed number.</p>
+        </div>
+        <div class="progress-track"><div class="progress-fill" id="fee-bar" style="width:0%"></div></div>
+        <div class="progress-labels"><span id="fee-bought">$0 bought back</span><span id="fee-earned">$0 earned</span></div>
+      </div>
+      <div class="card" style="border:none">
+        <div class="empty">
+          <div class="headline" id="sup-headline">Launch supporters — 0 of 0.15 SOL</div>
+          <p>Contributors fund the last step (creating STCKLS and its stock-paired pool) and get pro-rata tokens at launch plus a spot on this wall. If the launch doesn't happen within 14 days of hitting the goal, contributions are returned.</p>
+        </div>
+        <div id="sup-list"></div>
+        <a class="cta" href="about.html">Read the launch terms</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <div class="wordmark" style="margin-bottom:14px">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg>
+        STOCKULUS
+      </div>
+      <p style="color:var(--slate);font-size:14px;max-width:32ch;line-height:1.7">A delta-neutral carry agent for tokenized stocks on Solana, built to be checked, not just trusted.</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <ul class="footer-links">
+        <li><a href="system.html">System</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="docs.html">Docs</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Project</h4>
+      <ul class="footer-links">
+        <li><a href="about.html">About</a></li>
+        <li><a href="https://github.com/Henoch4/Stockulus" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>On-chain</h4>
+      <ul class="footer-links">
+        <li><a href="https://solscan.io/account/516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS?cluster=devnet" target="_blank" rel="noopener">Audit trail program</a></li>
+        <li><a href="https://solscan.io/account/Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF?cluster=devnet" target="_blank" rel="noopener">Vault program</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>Devnet build — dry run by default</span>
+    <span>No positions, no advice — informational only</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+<script>
+  var feed = document.getElementById('feed');
+
+  function addEntry(e) {
+    var el = document.createElement('div');
+    el.className = 'feed-item new';
+    el.innerHTML =
+      '<div class="t">' + e.time + '</div>' +
+      '<div class="body"><div class="headline">' + e.headline + '</div>' +
+      '<div class="detail">' + e.detail + '</div></div>' +
+      '<div class="verdict ' + (e.demo ? 'demo' : 'approved') + '">' + e.verdict + '</div>';
+    feed.prepend(el);
+  }
+
+  function fmtTime() {
+    return new Date().toTimeString().slice(0, 8) + ' UTC';
+  }
+
+  addEntry({
+    time: 'Verified on-chain',
+    headline: 'Buy <b>AAPLx</b> — carry signal, confidence 95%',
+    detail: '0.03 wSOL → 29,699 dAAPLx · logged on-chain before the swap',
+    verdict: 'Approved',
+    demo: false
+  });
+
+  function setText(id, v) {
+    var el = document.getElementById(id);
+    if (el && v !== undefined && v !== null) el.textContent = v;
+  }
+
+  // Live data from the agent's own /metrics/* endpoints (same origin when
+  // served via `python -m app.agent.serve`). Static content above stays as
+  // the honest offline snapshot; demo entries below only run when no server
+  // answers, and every one is labeled (demo).
+  var liveOk = false;
+  function applyMetrics(m) {
+    liveOk = true;
+    var agent = m.agent || {}, risk = m.risk_gate || {}, curator = m.curator || {};
+    var ks = risk.kill_switch || {}, ds = risk.daily_stats || {}, lim = risk.limits || {};
+
+    var kill = document.getElementById('pill-kill');
+    if (kill) {
+      var active = !!ks.active;
+      kill.innerHTML = '<span class="dot"></span>' + (active ? 'Kill switch ACTIVE' : 'Kill switch clear');
+      kill.classList.toggle('off', active);
+      if (active && ks.reason) kill.title = ks.reason;
+    }
+    var dry = document.getElementById('pill-dry');
+    if (dry) {
+      var isDry = agent.dry_run !== false;
+      dry.innerHTML = '<span class="dot"></span>' + (isDry ? 'Dry run' : 'LIVE');
+      dry.classList.toggle('off', isDry);
+    }
+    var live = document.getElementById('pill-live');
+    if (live) {
+      live.innerHTML = '<span class="dot"></span>Live';
+      live.classList.remove('off');
+    }
+    var note = document.getElementById('live-note');
+    if (note) note.textContent = 'Live — updated ' + fmtTime() + ' from the agent (' + (agent.agent_id || 'unknown') + ', cycle ' + (agent.total_cycles || 0) + ').';
+
+    var regime = agent.current_regime || curator.last_regime || 'Calm';
+    setText('stat-regime', regime);
+    if (lim.min_confidence_bps !== undefined) setText('stat-conf', Math.round(lim.min_confidence_bps / 100) + '%');
+    if (ds.trade_count !== undefined) setText('stat-trades', '1 + ' + ds.trade_count + ' today');
+
+    if (lim.max_position_usd !== undefined) setText('risk-pos', '$' + lim.max_position_usd);
+    if (lim.max_daily_loss_usd !== undefined) setText('risk-loss', '$' + lim.max_daily_loss_usd);
+    if (lim.max_daily_trades !== undefined) setText('risk-trades', lim.max_daily_trades + ' / 1.0×');
+
+    fetch('metrics/fees').then(function (r) { return r.json(); }).then(function (f) {
+      var earned = f.earned_usd || 0, bought = f.bought_back_usd || 0;
+      setText('fee-headline', '$' + earned.toFixed(2) + ' earned so far');
+      setText('fee-earned', '$' + earned.toFixed(2) + ' earned');
+      setText('fee-bought', '$' + bought.toFixed(2) + ' bought back');
+      var bar = document.getElementById('fee-bar');
+      if (bar) bar.style.width = (earned > 0 ? Math.min(100, bought / earned * 100) : 0) + '%';
+    }).catch(function () {});
+
+    fetch('metrics/supporters').then(function (r) { return r.json(); }).then(function (s) {
+      var count = s.count || 0, total = s.total_sol || 0;
+      setText('sup-headline', 'Launch supporters — ' + total + ' of 0.15 SOL');
+      var list = document.getElementById('sup-list');
+      if (list && s.supporters && s.supporters.length) {
+        list.innerHTML = s.supporters.map(function (x) {
+          return '<div class="mono" style="font-size:12.5px;margin-top:8px">' +
+            (x.name || 'anon') + ' — ' + (x.amount_sol || 0) + ' SOL</div>';
+        }).join('');
+      }
+    }).catch(function () {});
+  }
+
+  fetch('metrics/all').then(function (r) {
+    if (!r.ok) throw new Error('no metrics');
+    return r.json();
+  }).then(applyMetrics).catch(function () {
+    // Offline: clearly-labeled demo simulation only.
+    var demoQueue = [
+      { asset: 'TSLAx', conf: 82, detail: 'Basis 12bps, carry 61bps annualized', verdict: 'Approved' },
+      { asset: 'NVDAx', conf: 58, detail: 'Below 70% confidence floor', verdict: 'Blocked' },
+      { asset: 'AAPLx', conf: 91, detail: 'Basis 9bps, carry 74bps annualized', verdict: 'Approved' }
+    ];
+    var i = 0;
+    function tick() {
+      if (i >= demoQueue.length) return;
+      var d = demoQueue[i++];
+      addEntry({
+        time: fmtTime() + ' (demo)',
+        headline: (d.verdict === 'Approved' ? 'Buy' : 'Rejected') + ' <b>' + d.asset + '</b> — confidence ' + d.conf + '%',
+        detail: d.detail,
+        verdict: d.verdict === 'Approved' ? 'Approved (demo)' : 'Blocked (demo)',
+        demo: true
+      });
+      setTimeout(tick, 2600);
+    }
+    setTimeout(tick, 1400);
+  });
+  setInterval(function () {
+    fetch('metrics/all').then(function (r) {
+      if (!r.ok) throw new Error('no metrics');
+      return r.json();
+    }).then(applyMetrics).catch(function () {});
+  }, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Docs — Stockulus</title>
+<meta name="description" content="Get Stockulus running on Solana devnet — quick start, environment variables, and the real run command.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="ruler left"></div>
+<div class="ruler right"></div>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="wordmark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg>
+      STOCKULUS <span class="agent-id">/ carry vault</span>
+    </a>
+    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="system.html">System</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="docs.html" aria-current="page">Docs</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+    <a href="https://github.com/Henoch4/Stockulus" target="_blank" rel="noopener" class="nav-cta">View source</a>
+  </nav>
+</header>
+
+<main>
+  <section class="wrap" style="padding:44px 0 8px">
+    <div class="kicker">Documentation</div>
+    <h1 style="font-size:clamp(30px,4vw,44px)">Run it on devnet.</h1>
+    <p class="lede" style="margin-top:16px;font-size:17px">Stockulus ships as an off-chain Python agent plus two on-chain Solana programs. Everything here matches what's actually deployed — no invented steps.</p>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="docs-layout">
+      <nav class="docs-nav">
+        <a href="#prereqs">Prerequisites</a>
+        <a href="#deploy">Deploy on-chain</a>
+        <a href="#env">Environment variables</a>
+        <a href="#run">Run the agent</a>
+        <a href="#status">Current status</a>
+      </nav>
+
+      <div>
+        <div class="docs-section" id="prereqs">
+          <h2>Prerequisites</h2>
+          <p>Three toolchains, one for each layer of the stack: Rust/Anchor for the on-chain programs, Node for the Meteora swap wrapper, Python for the agent itself.</p>
+          <pre class="code"><span class="cm"># Rust + Anchor</span>
+cargo install --git https://github.com/coral-xyz/anchor avm --locked --force
+
+<span class="cm"># Node.js</span>
+npm i -g pnpm
+
+<span class="cm"># Python 3.11+</span>
+pip install anchorpy solders httpx hmmlearn pyyaml python-dotenv</pre>
+        </div>
+
+        <div class="docs-section" id="deploy">
+          <h2>Deploy on-chain</h2>
+          <p>Build the TypeScript swap wrapper and both Anchor programs, then deploy to devnet. This step produces the two program IDs you'll put in <span class="mono">.env</span> next.</p>
+          <pre class="code"><span class="cm"># 1. Build the TypeScript SDK wrapper</span>
+cd app/ts && pnpm install && pnpm run build
+
+<span class="cm"># 2. Build the Anchor programs</span>
+cd programs/trade_audit_trail && cargo build-sbf
+cd programs/trading_vault && cargo build-sbf
+
+<span class="cm"># 3. Deploy to devnet</span>
+anchor deploy --provider.cluster devnet</pre>
+        </div>
+
+        <div class="docs-section" id="env">
+          <h2>Environment variables</h2>
+          <p>Copy <span class="mono">.env.example</span> to <span class="mono">.env</span> and fill these in. Anything marked required blocks the agent from starting; everything else degrades gracefully — a missing Clawpump key just skips the launch demo, for example.</p>
+          <table class="env-table">
+            <tr><th>Variable</th><th>What it's for</th></tr>
+            <tr><td>RPC_URL <span class="badge req">required</span></td><td>Solana RPC endpoint. Defaults to public devnet.</td></tr>
+            <tr><td>ANCHOR_PROGRAM_ID <span class="badge req">required</span></td><td>Deployed address of the audit-trail program.</td></tr>
+            <tr><td>VAULT_PROGRAM_ID</td><td>Deployed address of the vault program.</td></tr>
+            <tr><td>AGENT_KEYPAIR_PATH <span class="badge req">required</span></td><td>Path to the agent's Solana keypair file. Devnet throwaway — never reuse on mainnet.</td></tr>
+            <tr><td>CLAWPUMP_API_KEY <span class="badge">optional</span></td><td>Enables the agent-launch demo. Missing = that part is skipped, rest still runs.</td></tr>
+            <tr><td>NANSEN_API_KEY <span class="badge">optional</span></td><td>On-chain flow signal. Missing = that signal stays neutral.</td></tr>
+            <tr><td>RISK_STATE_PATH</td><td>Where daily loss/trade counters persist across restarts.</td></tr>
+            <tr><td>QUOTE_MINT / QUOTE_DECIMALS</td><td>Quote asset for the DBC pools — wSOL on devnet, USDC on mainnet.</td></tr>
+            <tr><td>DBC_POOL_AAPLX / TSLAX / NVDAX</td><td>Pool address for each tokenized stock, from <span class="mono">create_pool.js</span>.</td></tr>
+          </table>
+        </div>
+
+        <div class="docs-section" id="run">
+          <h2>Run the agent</h2>
+          <p>With <span class="mono">.env</span> filled in and a funded devnet keypair, start the agent. It defaults to dry run — decisions and the risk gate all run for real, but nothing gets swapped or logged on-chain until you explicitly turn that off.</p>
+          <pre class="code"><span class="cm"># from the repo root</span>
+export RPC_URL=https://api.devnet.solana.com
+export ANCHOR_PROGRAM_ID=&lt;deployed_program_id&gt;
+export AGENT_KEYPAIR_PATH=./agent_keypair.json
+
+python -m agent</pre>
+          <p style="margin-top:16px">To open the desk with live numbers, serve the site plus the agent's metrics endpoints (read-only — no trades, no transactions):</p>
+          <pre class="code"><span class="cm"># from the repo root — desk at http://127.0.0.1:8000/</span>
+python -m app.agent.serve</pre>
+          <p style="margin-top:16px">To confirm everything's wired correctly before running for real, the repo includes a smoke test that runs a full dry-run cycle against fake price data:</p>
+          <pre class="code">python scripts/test_wiring.py
+
+<span class="cm">agent instantiated OK
+active patterns: ['carry_bsm', 'regime_hmm', 'dbc_vol_tune']
+status: completed
+signals: 3, decisions: 3, executions: 3
+errors: []</span></pre>
+        </div>
+
+        <div class="docs-section" id="status">
+          <h2>Current status</h2>
+          <p>Honest state, as of this build:</p>
+          <table class="env-table">
+            <tr><th>Piece</th><th>Status</th></tr>
+            <tr><td>Audit-trail program</td><td>Deployed on devnet, verifiable on Solscan</td></tr>
+            <tr><td>Vault program</td><td>Deployed on devnet — share accounting is still being hardened before real deposits</td></tr>
+            <tr><td>Meteora pools</td><td>Created for all three tracked assets</td></tr>
+            <tr><td>End-to-end trade</td><td>Proven once, live — signal → risk gate → on-chain log → real swap</td></tr>
+            <tr><td>Vault deposits</td><td>Not yet open — waiting on the share-accounting fix above</td></tr>
+            <tr><td>Fee buyback + supporters wall</td><td>Live and tracked, currently at zero — no fees earned yet</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <div class="wordmark" style="margin-bottom:14px">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg>
+        STOCKULUS
+      </div>
+      <p style="color:var(--slate);font-size:14px;max-width:32ch;line-height:1.7">A delta-neutral carry agent for tokenized stocks on Solana, built to be checked, not just trusted.</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <ul class="footer-links">
+        <li><a href="system.html">System</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="docs.html">Docs</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Project</h4>
+      <ul class="footer-links">
+        <li><a href="about.html">About</a></li>
+        <li><a href="https://github.com/Henoch4/Stockulus" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>On-chain</h4>
+      <ul class="footer-links">
+        <li><a href="https://solscan.io/account/516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS?cluster=devnet" target="_blank" rel="noopener">Audit trail program</a></li>
+        <li><a href="https://solscan.io/account/Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF?cluster=devnet" target="_blank" rel="noopener">Vault program</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>Devnet build — dry run by default</span>
+    <span>No positions, no advice — informational only</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+<script>
+  var links = document.querySelectorAll('.docs-nav a');
+  var sections = Array.prototype.map.call(links, function (a) {
+    return document.querySelector(a.getAttribute('href'));
+  });
+  function onScroll() {
+    var pos = window.scrollY + 140;
+    var activeIdx = 0;
+    sections.forEach(function (s, i) { if (s && s.offsetTop <= pos) activeIdx = i; });
+    links.forEach(function (a, i) { a.classList.toggle('active', i === activeIdx); });
+  }
+  document.addEventListener('scroll', onScroll);
+  onScroll();
+</script>
+</body>
+</html>

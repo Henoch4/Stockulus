@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>About — Stockulus</title>
+<meta name="description" content="Why Stockulus is built the way it is — carry over conviction, proof over trust.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="ruler left"></div>
+<div class="ruler right"></div>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="wordmark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg>
+      STOCKULUS <span class="agent-id">/ carry vault</span>
+    </a>
+    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="system.html">System</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="about.html" aria-current="page">About</a></li>
+    </ul>
+    <a href="dashboard.html" class="nav-cta">Open the desk</a>
+  </nav>
+</header>
+
+<main>
+  <section class="wrap section-pad" style="padding-bottom:10px">
+    <div class="kicker">About</div>
+    <h1 style="font-size:clamp(30px,4vw,46px);max-width:18ch">Stockulus means the gap. That's the whole idea.</h1>
+    <p class="lede" style="margin-top:20px;font-size:17px">In finance, delta is how much a position moves when the thing it's tracking moves. Delta-neutral means holding that movement flat — profiting from the structure of a market instead of guessing its direction. That's the entire strategy, and it's why the name stuck.</p>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="split">
+      <div>
+        <div class="kicker">Why this, not a bigger bet</div>
+        <h2>Carry is boring on purpose.</h2>
+      </div>
+      <div class="split-body">
+        <p>Most trading agents are built to predict something — a price, a trend, a headline. Stockulus doesn't. It looks for a specific, structural gap: a tokenized stock trading away from its real-world price because tokenized markets never close and real ones do. That gap is small, it's persistent, and it doesn't require being right about the future — only patient about the present.</p>
+        <p style="margin-top:16px">Boring is the point. A strategy that doesn't need conviction is a strategy that doesn't need to lie to you about how confident it is.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="kicker">Principles</div>
+    <h2 style="font-size:clamp(24px,3vw,32px);max-width:20ch">What actually shapes every decision in this system.</h2>
+    <div class="principles">
+      <div class="principle">
+        <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg></div>
+        <div>
+          <h3>Log first, trade second</h3>
+          <p>The decision goes on-chain before the trade happens, not after. That ordering is the whole trust model — a system that logs after the fact is just narrating its own choices.</p>
+        </div>
+      </div>
+      <div class="principle">
+        <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg></div>
+        <div>
+          <h3>Limits that can tighten, never loosen</h3>
+          <p>An operator can make the safety limits stricter. Nothing — not the operator, not the agent — can make them looser than the last approved value. Ratcheting one direction only is what makes a limit mean something over time.</p>
+        </div>
+      </div>
+      <div class="principle">
+        <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg></div>
+        <div>
+          <h3>The trader can't also be the referee</h3>
+          <p>Signal logic, risk limits, and the audit log are three separate pieces of code with no authority over each other. A bug or a bad incentive in one can't quietly override the other two.</p>
+        </div>
+      </div>
+      <div class="principle">
+        <div class="mark"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg></div>
+        <div>
+          <h3>Say what's actually true</h3>
+          <p>If something isn't live yet, the docs and the dashboard say so, plainly — not "coming soon," an honest zero. A demo that has to lie to look impressive isn't a demo worth trusting.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="split">
+      <div>
+        <div class="kicker">Launch &amp; supporters</div>
+        <h2>How the last mile gets funded.</h2>
+      </div>
+      <div class="split-body">
+        <p>Stockulus' own token (<span class="mono">STCKLS</span>) and its stock-paired liquidity pool are the last piece — they need a small amount of funding to launch (0.15 SOL). Contributors get a pro-rata share of the token at launch and a permanent spot on the supporters wall on the dashboard.</p>
+        <p style="margin-top:16px">If the goal is reached but launch doesn't happen within 14 days, contributions are returned in full. Every fee the live system earns afterward is tracked toward buying that token back — visible on the dashboard, verifiable against a transaction hash, not just a claimed number.</p>
+        <div class="btn-row" style="margin-top:24px">
+          <a href="dashboard.html" class="btn btn-primary">See the supporters wall</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <div class="wordmark" style="margin-bottom:14px">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg>
+        STOCKULUS
+      </div>
+      <p style="color:var(--slate);font-size:14px;max-width:32ch;line-height:1.7">A delta-neutral carry agent for tokenized stocks on Solana, built to be checked, not just trusted.</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <ul class="footer-links">
+        <li><a href="system.html">System</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="docs.html">Docs</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Project</h4>
+      <ul class="footer-links">
+        <li><a href="about.html">About</a></li>
+        <li><a href="https://github.com/Henoch4/Stockulus" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>On-chain</h4>
+      <ul class="footer-links">
+        <li><a href="https://solscan.io/account/516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS?cluster=devnet" target="_blank" rel="noopener">Audit trail program</a></li>
+        <li><a href="https://solscan.io/account/Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF?cluster=devnet" target="_blank" rel="noopener">Vault program</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>Devnet build — dry run by default</span>
+    <span>No positions, no advice — informational only</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

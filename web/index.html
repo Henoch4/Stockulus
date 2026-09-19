@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stockulus — Delta-neutral carry, proven on-chain</title>
+<meta name="description" content="Stockulus buys tokenized stocks when they're structurally cheap to hold, checks every trade against limits it can't override, and writes the decision on-chain before it trades.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="ruler left"></div>
+<div class="ruler right"></div>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="wordmark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg>
+      STOCKULUS <span class="agent-id">/ carry vault</span>
+    </a>
+    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    <ul class="nav-links">
+      <li><a href="index.html" aria-current="page">Home</a></li>
+      <li><a href="system.html">System</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+    <a href="dashboard.html" class="nav-cta">Open the desk</a>
+  </nav>
+</header>
+
+<main>
+  <section class="hero-scene">
+    <div class="hero-orb"></div>
+    <div class="hero-moon"></div>
+    <div class="hero-content">
+      <div class="hero-headline">
+        <h1>The gap is the strategy.</h1>
+        <p class="hero-tagline">Delta-neutral carry, proven on-chain.</p>
+        <div class="hero-marks">
+          <span class="m"><span class="dot"></span>Signal</span>
+          <span class="m"><span class="dot"></span>Risk gate</span>
+          <span class="m"><span class="dot"></span>Audit trail</span>
+          <span class="m"><span class="dot"></span>Vault</span>
+        </div>
+      </div>
+      <div class="hero-blurb">
+        <p>Stockulus buys tokenized stocks when they're structurally cheap to hold, checks every trade against limits it can't override, and writes the decision on-chain before it trades.</p>
+        <div class="btn-row">
+          <a href="dashboard.html" class="btn btn-primary">Open the desk</a>
+          <a href="system.html" class="btn btn-ghost">Read the system</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap" style="padding-top:56px">
+    <div class="stats">
+      <div class="stat"><div class="v"><span>$100</span></div><div class="l">Largest single position it will take</div></div>
+      <div class="stat"><div class="v"><span>70%</span></div><div class="l">Minimum confidence required to trade</div></div>
+      <div class="stat"><div class="v">1</div><div class="l">Real trade proven end-to-end on devnet</div></div>
+      <div class="stat"><div class="v">0</div><div class="l">Trades that skip the on-chain log</div></div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="kicker">How it stays neutral</div>
+    <h2 style="font-size:clamp(26px,3.4vw,38px);max-width:20ch">Four steps between an idea and a real trade — in order, every time.</h2>
+    <div class="pipeline">
+      <div class="step">
+        <div class="idx">1</div>
+        <h3>Read the market</h3>
+        <p>Stockulus compares a tokenized stock's price to its real-world spot price, factoring in dividend yield and borrow cost. When the gap is wide enough and steady enough, that's a signal.</p>
+        <div class="tag">stock_carry.py</div>
+      </div>
+      <div class="step">
+        <div class="idx">2</div>
+        <h3>Check the limits</h3>
+        <p>A separate safety gate — not the trading logic itself — checks position size, daily loss budget, and confidence against hard limits before anything is allowed through.</p>
+        <div class="tag">risk_gate.py</div>
+      </div>
+      <div class="step">
+        <div class="idx">3</div>
+        <h3>Write it down first</h3>
+        <p>The decision — asset, size, confidence, the reasoning — is logged on Solana before the trade executes. Anyone can check the record; no one, including Stockulus' own operator, can rewrite it after the fact.</p>
+        <div class="tag">trade_audit_trail</div>
+      </div>
+      <div class="step">
+        <div class="idx">4</div>
+        <h3>Trade it</h3>
+        <p>Only then does the real swap happen, and the fill gets checked against what was logged. A mismatch beyond tolerance halts the agent rather than quietly absorbing the difference.</p>
+        <div class="tag">meteora_executor.py</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="split">
+      <div>
+        <div class="kicker">Why this exists</div>
+        <h2>Carry, not conviction.</h2>
+      </div>
+      <div class="split-body">
+        <p>Tokenized stocks trade around the clock on Solana, but real markets close. That mismatch — plus dividends and the cost of holding — creates a small, persistent gap between a tokenized stock's price and its real one. Stockulus doesn't bet on where a stock is going. It holds the gap, collects the carry, and gets out when the gap closes.</p>
+        <p style="margin-top:16px">The harder problem isn't finding that gap — it's proving, to someone who's never met you, that the system trading it actually behaves the way it says it does. That's what the audit trail and the risk gate are for.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad" style="padding-bottom:0">
+    <div class="card" style="text-align:center;padding:56px 32px">
+      <h2 style="font-size:clamp(24px,3vw,32px)">See it running.</h2>
+      <p class="lede" style="margin:16px auto 28px;max-width:52ch;text-align:center">The desk shows the real devnet deployment — the actual programs, the actual proven trade, the actual limits — not a mockup.</p>
+      <div class="btn-row" style="justify-content:center">
+        <a href="dashboard.html" class="btn btn-primary">Open the desk</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <div class="wordmark" style="margin-bottom:14px">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg>
+        STOCKULUS
+      </div>
+      <p style="color:var(--slate);font-size:14px;max-width:32ch;line-height:1.7">A delta-neutral carry agent for tokenized stocks on Solana, built to be checked, not just trusted.</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <ul class="footer-links">
+        <li><a href="system.html">System</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="docs.html">Docs</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Project</h4>
+      <ul class="footer-links">
+        <li><a href="about.html">About</a></li>
+        <li><a href="https://github.com/Henoch4/Stockulus" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>On-chain</h4>
+      <ul class="footer-links">
+        <li><a href="https://solscan.io/account/516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS?cluster=devnet" target="_blank" rel="noopener">Audit trail program</a></li>
+        <li><a href="https://solscan.io/account/Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF?cluster=devnet" target="_blank" rel="noopener">Vault program</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>Devnet build — dry run by default</span>
+    <span>No positions, no advice — informational only</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>

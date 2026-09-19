@@ -1,3 +1,13 @@
+"""Serve the Stockulus desk (web/) + live /metrics/* endpoints.
+
+Read-only: builds the same agent stack as __main__ but never sends
+transactions and never runs trading cycles. Metrics reflect local risk
+counters, fee ledger, supporters wall, and on-chain connection state.
+
+Usage (repo root):
+    python -m app.agent.serve
+    # → http://127.0.0.1:8000/  (desk), /metrics/all (JSON)
+"""
 import asyncio
 import json
 import os
@@ -15,6 +25,8 @@ from app.agent.meteora_executor import MeteoraExecutor
 from app.agent.audit_logger_sol import SolanaAuditLogger
 from app.agent.curator import CuratorAgent
 from app.agent.data_integrity import DataIntegrityGate
+from app.agent.multi_leg import MultiLegExecutionManager
+from app.agent.dashboard import Dashboard, create_dashboard_routes
 from solders.keypair import Keypair
 
 
@@ -30,12 +42,11 @@ def load_keypair(path: str) -> Keypair:
         raise ValueError(f"keypair file must be 32 or 64 bytes, got {len(secret)}")
     return Keypair.from_bytes(secret)
 
-async def main():
-    # Load keypair
+
+async def build_dashboard() -> Dashboard:
     keypair_path = os.getenv("AGENT_KEYPAIR_PATH", "./agent_keypair.json")
     kp = load_keypair(keypair_path)
 
-    # Risk gate (durable)
     risk_state_path = os.getenv("RISK_STATE_PATH", "./risk_state.json")
     counters = DurableDailyCounters(path=risk_state_path, enabled=True)
     risk_gate = RiskGate(
@@ -49,26 +60,20 @@ async def main():
         counter_store=counters,
     )
 
-    # Clients
     xstocks = XStocksClient()
     rpc_url = os.getenv("RPC_URL", "https://api.devnet.solana.com")
-    keypair_path = os.getenv("AGENT_KEYPAIR_PATH", "./agent_keypair.json")
     meteora = MeteoraExecutor(rpc_url, keypair_path=keypair_path)
 
     audit_program_id = os.getenv("ANCHOR_PROGRAM_ID")
     if not audit_program_id:
-        print("ERROR: ANCHOR_PROGRAM_ID not set in .env")
-        return
-
+        raise RuntimeError("ANCHOR_PROGRAM_ID not set in .env")
     audit = SolanaAuditLogger(rpc_url, audit_program_id, kp)
     await audit.connect()
-    await audit.set_risk_params(100, 20, 10000, 7000)
 
     curator = CuratorAgent(audit_log=None)
     integrity = DataIntegrityGate(staleness_threshold_s=30.0)
+    multi_leg = MultiLegExecutionManager()
 
-    # DRY_RUN defaults to true: live swaps only on explicit DRY_RUN=false.
-    # (Placeholder perp/borrow/div data must never reach a real pool.)
     dry_run = os.getenv("DRY_RUN", "true").strip().lower() != "false"
 
     agent = AutonomousTradingAgent(
@@ -83,19 +88,34 @@ async def main():
         audit_log=None,
         regime_window=50,
     )
+    return Dashboard(
+        agent=agent,
+        curator=curator,
+        risk_gate=risk_gate,
+        multi_leg_manager=multi_leg,
+        onchain_logger=audit,
+    )
 
-    # Run 3 cycles
-    for i in range(3):
-        print(f"\n=== Cycle {i+1} ===")
-        result = await agent.run_trading_cycle(["AAPLx", "TSLAx", "NVDAx"])
-        print(f"Signals: {len(result.signals)}, Decisions: {len(result.decisions)}, Executions: {len(result.executions)}")
-        if result.errors:
-            print(f"Errors: {result.errors}")
-        print(f"Patterns: {result.pattern_metrics}")
-        await asyncio.sleep(10)
 
-    await audit.close()
-    await xstocks.close()
+def create_app() -> "FastAPI":
+    from fastapi import FastAPI
+    from fastapi.staticfiles import StaticFiles
+
+    dashboard: Dashboard = asyncio.run(build_dashboard())
+    app = FastAPI(title="Stockulus desk")
+    create_dashboard_routes(app, dashboard)
+
+    web_dir = Path(__file__).resolve().parent.parent.parent / "web"
+    if web_dir.is_dir():
+        app.mount("/", StaticFiles(directory=str(web_dir), html=True), name="desk")
+    return app
+
+
+app = create_app()
+
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    import uvicorn
+
+    port = int(os.getenv("SERVE_PORT", "8000"))
+    uvicorn.run(app, host="127.0.0.1", port=port)

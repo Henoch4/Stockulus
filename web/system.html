@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System — Stockulus</title>
+<meta name="description" content="How Stockulus' signal engine, risk gate, audit trail, and vault fit together — with the real limits configured in code.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="ruler left"></div>
+<div class="ruler right"></div>
+
+<header class="site-header">
+  <nav class="nav">
+    <a href="index.html" class="wordmark">
+      <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg>
+      STOCKULUS <span class="agent-id">/ carry vault</span>
+    </a>
+    <button class="nav-toggle" aria-label="Toggle menu" aria-expanded="false">☰</button>
+    <ul class="nav-links">
+      <li><a href="index.html">Home</a></li>
+      <li><a href="system.html" aria-current="page">System</a></li>
+      <li><a href="dashboard.html">Dashboard</a></li>
+      <li><a href="docs.html">Docs</a></li>
+      <li><a href="about.html">About</a></li>
+    </ul>
+    <a href="dashboard.html" class="nav-cta">Open the desk</a>
+  </nav>
+</header>
+
+<main>
+  <section class="wrap section-pad" style="padding-bottom:40px">
+    <div class="kicker">Architecture</div>
+    <h1 style="font-size:clamp(32px,4.4vw,52px);max-width:18ch">Four pieces. Each one can only do its own job.</h1>
+    <p class="lede" style="margin-top:20px;font-size:18px">The signal engine decides what looks attractive. It has no power to override the risk gate. The risk gate can block a trade; it can't write to the chain. The audit trail can refuse to log; it can't place a trade. Splitting the jobs this way is what makes the limits actually mean something.</p>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="split">
+      <div>
+        <div class="kicker">01 — Signal engine</div>
+        <h2>Reads the gap, not the news.</h2>
+      </div>
+      <div>
+        <p class="split-body">Stockulus prices the "cost of carry" for each tokenized stock — the combined effect of the risk-free rate, the dividend yield it's missing by holding the token instead of the real share, and the cost of borrowing. When the tokenized price sits far enough above (or below) that fair value, and stays there, that's a tradeable signal in either direction.</p>
+        <table class="spec-table">
+          <tr><td>Formula</td><td>b = r − q − borrow</td></tr>
+          <tr><td>Minimum basis to spot</td><td>5 bps</td></tr>
+          <tr><td>Minimum annualized carry</td><td>50 bps</td></tr>
+          <tr><td>Confidence formula</td><td>0.7 + basis/200 + carry/200, capped at 0.9</td></tr>
+          <tr><td>Regime awareness</td><td>3-state model — calm, trending, stressed</td></tr>
+          <tr><td>Tracked assets</td><td>AAPLx, TSLAx, NVDAx</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="split">
+      <div>
+        <div class="kicker">02 — Risk gate</div>
+        <h2>Can only get stricter, never looser.</h2>
+      </div>
+      <div>
+        <p class="split-body">Every proposed trade passes through a gate that isn't part of the signal logic — it can't be reasoned around. Limits can be tightened by an operator, but never loosened past their last approved value, and a kill switch halts everything immediately if daily loss or trade-count limits are hit.</p>
+        <table class="spec-table">
+          <tr><td>Max position size</td><td>$100</td></tr>
+          <tr><td>Max daily loss</td><td>$20</td></tr>
+          <tr><td>Max trades per day</td><td>10</td></tr>
+          <tr><td>Minimum confidence to trade</td><td>70%</td></tr>
+          <tr><td>Leverage</td><td>1.0× — spot only, no leverage</td></tr>
+          <tr><td>Kill switch</td><td>Owner-controlled; agent can self-halt, can't self-clear</td></tr>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="split">
+      <div>
+        <div class="kicker">03 — Audit trail</div>
+        <h2>On-chain before, not after.</h2>
+      </div>
+      <div>
+        <p class="split-body">Every approved decision is written to a Solana program before Stockulus executes the trade — asset, size, confidence, and a hash of the reasoning behind it. The record is immutable once written, and the same program tracks daily loss and trade counts independently of the off-chain agent, so a crash or restart can't quietly reset the day's limits.</p>
+        <table class="spec-table">
+          <tr><td>Program</td><td class="mono" style="font-size:12px">516a5KdUr...vsFMS6</td></tr>
+          <tr><td>Write timing</td><td>Before execution, not after</td></tr>
+          <tr><td>Daily counters</td><td>Persisted on-chain, restart-safe</td></tr>
+          <tr><td>Kill-switch authority</td><td>Separate from the trading key</td></tr>
+        </table>
+        <a href="https://solscan.io/account/516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS?cluster=devnet" target="_blank" rel="noopener" class="btn btn-ghost" style="margin-top:20px">View program on Solscan</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="split">
+      <div>
+        <div class="kicker">04 — Vault</div>
+        <h2>Deposits, priced fairly, every time.</h2>
+      </div>
+      <div>
+        <p class="split-body">Deposits go into a vault that issues shares representing a proportional claim — priced off the vault's attested holdings, not a number the agent can invent on the spot. NAV updates are capped in how far they can move per attestation and rate-limited, so a single bad or malicious update can't reprice everyone else's shares.</p>
+        <table class="spec-table">
+          <tr><td>Share pricing</td><td>Proportional to attested holdings</td></tr>
+          <tr><td>NAV update cap</td><td>Bounded delta per attestation</td></tr>
+          <tr><td>Update frequency</td><td>Timelocked between attestations</td></tr>
+          <tr><td>Withdrawals</td><td>Blocked mid-trade, open otherwise</td></tr>
+        </table>
+        <p style="margin-top:16px;font-family:var(--mono);font-size:13px;color:var(--slate-dim)">This is the one component still being hardened before real deposits — see Docs for current status.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap section-pad">
+    <div class="kicker">Where the money actually moves</div>
+    <h2 style="font-size:clamp(24px,3vw,32px)">Execution goes through Meteora's bonding-curve pools.</h2>
+    <p class="lede" style="margin-top:16px">Each tokenized stock has its own liquidity pool with a volatility-tuned curve — calm markets get a low, linear fee; stressed markets get a steeper, exponential one, so the pool itself resists getting drained during a spike.</p>
+    <div class="card-grid">
+      <div class="card">
+        <h3 style="font-size:17px">Calm curve</h3>
+        <p style="margin-top:10px;color:var(--slate);font-size:14px;line-height:1.65">Linear, ~120 bps. Used when the regime detector reads low volatility.</p>
+      </div>
+      <div class="card">
+        <h3 style="font-size:17px">Stress curve</h3>
+        <p style="margin-top:10px;color:var(--slate);font-size:14px;line-height:1.65">Exponential, up to 900 bps. Kicks in automatically when volatility jumps.</p>
+      </div>
+      <div class="card">
+        <h3 style="font-size:17px">Fill verification</h3>
+        <p style="margin-top:10px;color:var(--slate);font-size:14px;line-height:1.65">Every fill is checked against the logged decision; a bad fill halts the agent rather than getting absorbed silently.</p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap footer-grid">
+    <div>
+      <div class="wordmark" style="margin-bottom:14px">
+        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3L21 20H3L12 3Z" stroke="#FF8A3D" stroke-width="2" stroke-linejoin="round"/></svg>
+        STOCKULUS
+      </div>
+      <p style="color:var(--slate);font-size:14px;max-width:32ch;line-height:1.7">A delta-neutral carry agent for tokenized stocks on Solana, built to be checked, not just trusted.</p>
+    </div>
+    <div>
+      <h4>Product</h4>
+      <ul class="footer-links">
+        <li><a href="system.html">System</a></li>
+        <li><a href="dashboard.html">Dashboard</a></li>
+        <li><a href="docs.html">Docs</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>Project</h4>
+      <ul class="footer-links">
+        <li><a href="about.html">About</a></li>
+        <li><a href="https://github.com/Henoch4/Stockulus" target="_blank" rel="noopener">GitHub</a></li>
+      </ul>
+    </div>
+    <div>
+      <h4>On-chain</h4>
+      <ul class="footer-links">
+        <li><a href="https://solscan.io/account/516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS?cluster=devnet" target="_blank" rel="noopener">Audit trail program</a></li>
+        <li><a href="https://solscan.io/account/Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF?cluster=devnet" target="_blank" rel="noopener">Vault program</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="wrap footer-bottom">
+    <span>Devnet build — dry run by default</span>
+    <span>No positions, no advice — informational only</span>
+  </div>
+</footer>
+
+<script src="js/main.js"></script>
+</body>
+</html>
