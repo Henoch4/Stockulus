@@ -2,6 +2,6 @@
   "mint": "9K4iVBL1YuqZvZAR36Bw4s6uSeB7K9SeBAoqKAZ9ZrPE",
   "agentAta": "5hBRHLDGMEehc2K2GwFzfRAtapKtfzg5XEhDiQ2yXQf",
   "vaultPda": "9AckRchtnkquZdM8rrqFPLabLaGzsm5UNrU2LaHHUGdg",
-  "vaultTokenPda": "DkuXrE9YVYe5g8Z5FGoTWBkivSqdH25NDTQFj4MX3S8U",
+  "vaultHoldings": "DkuXrE9YVYe5g8Z5FGoTWBkivSqdH25NDTQFj4MX3S8U",
   "mintTx": "268qNd1CW4Um42tL2hvvh9zELVNAHFBdugrvZ5XVub4Zq3iUJ4Siw9qSDbKuPvd6rU4qJEM77qSUfsnwwQqm7oAK"
 }

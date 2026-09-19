@@ -83,7 +83,11 @@ jobs:
           done || echo "WARNING: program show unreachable; proceeding to upgrade"
 
       - name: Build trading_vault (SBF)
-        run: cargo build-sbf --manifest-path programs/trading_vault/Cargo.toml
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          cargo build-sbf --manifest-path programs/trading_vault/Cargo.toml 2>&1 | tee /tmp/build.log
+          test "${PIPESTATUS[0]}" -eq 0
 
       - name: Deployer balance (diagnostic, non-fatal)
         shell: bash
@@ -229,6 +233,8 @@ jobs:
           {
             echo "Upgrade run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             echo "Program: ${VAULT_PROGRAM_ID}"
+            echo "--- build log tail ---"
+            tail -40 /tmp/build.log 2>/dev/null || echo "(no build log)"
             echo "--- reclaim log ---"
             cat /tmp/reclaim.log 2>/dev/null || echo "(no reclaim log)"
             echo "--- buffer log tail ---"
