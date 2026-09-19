@@ -140,8 +140,9 @@ async def main() -> None:
     topup = json.loads(_r.stdout.strip())
     print(f"  yield in: {topup['vaultBalance']} held, tx={topup['tx']}")
     txs["topup_yield"] = topup["tx"]
-    v = await client.read_vault(kp.pubkey())
-    drifted = v.total_assets + YIELD
+    # Attest to ACTUAL holdings (the top-up script reports the post-transfer
+    # balance) — never to books+YIELD, which double-counts the top-up.
+    drifted = int(topup["vaultBalance"])
     for attempt in range(3):
         try:
             txs["attest_ok"] = await client.attest_total_assets(drifted)
@@ -177,6 +178,7 @@ async def main() -> None:
     print(f"  assets={v.total_assets} shares={v.total_shares} tx={txs['withdraw']}")
 
     await client.close()
+    txs = {k: str(s) for k, s in txs.items()}
     print(json.dumps({
         "mint": str(mint),
         "vault": str(derive_vault_pda(client.program_id, kp.pubkey())[0]),
