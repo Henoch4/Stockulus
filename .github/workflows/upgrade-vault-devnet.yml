@@ -161,16 +161,7 @@ jobs:
           SO_BYTES="$(stat -c%s target/deploy/trading_vault.so)"
           DATA_LEN=""
           for i in 1 2 3; do
-            DATA_LEN="$(python3 - "$SOLANA_RPC_URL" "$PROGRAMDATA_ADDRESS" <<'PY' 2>/dev/null || true
-          import base64, json, sys, urllib.request
-          rpc, addr = sys.argv[1], sys.argv[2]
-          body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo",
-                             "params": [addr, {"encoding": "base64"}]}).encode()
-          req = urllib.request.Request(rpc, data=body, headers={"Content-Type": "application/json"})
-          data = json.load(urllib.request.urlopen(req, timeout=30))["result"]["value"]["data"][0]
-          print(len(base64.b64decode(data)))
-PY
-            )" && test -n "$DATA_LEN" && break
+            DATA_LEN="$(python3 -c 'import base64, json, sys, urllib.request; rpc, addr = sys.argv[1], sys.argv[2]; body = json.dumps({"jsonrpc": "2.0", "id": 1, "method": "getAccountInfo", "params": [addr, {"encoding": "base64"}]}).encode(); req = urllib.request.Request(rpc, data=body, headers={"Content-Type": "application/json"}); data = json.load(urllib.request.urlopen(req, timeout=30))["result"]["value"]["data"][0]; print(len(base64.b64decode(data)))' "$SOLANA_RPC_URL" "$PROGRAMDATA_ADDRESS" 2>/dev/null || true)" && test -n "$DATA_LEN" && break
             echo "size probe attempt $i failed — retrying"
             sleep 15
           done
