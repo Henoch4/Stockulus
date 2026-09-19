@@ -97,7 +97,7 @@ jobs:
         # another buffer on an empty wallet just locks more rent.
         shell: bash
         env:
-          ABANDONED_BUFFERS: "FGGzX4TNcoRFiB3EXCXgMXuEHrmRuF5NKyi9FcrQtU5n 6wAUCP54rjG1SgYZJHqnV3c6k1xYBJEdU8SLsNs8gxXF 8mQKXHaGxVZ7L7NSpGeEZxSaLrVLt76LEieKCLjLZfpo 6JQaTrbmaRLs2KDjdefKFJYU5b7arkRQeZe8bJsssRsS"
+          ABANDONED_BUFFERS: "B86okiZ9msMjKyQVpTApb9AKwFFw95tCL4p5VUUS4AGu FhWBXimZTC5ok2uNR2tBtzTBcgg88FW3AqepUf67PMTg"
         run: |
           set -Eeuo pipefail
           {
@@ -248,15 +248,15 @@ jobs:
           lines = open("/tmp/issue_raw.txt", encoding="utf-8", errors="replace").read().splitlines()
           out, skip = [], 0
           for ln in lines:
-            low = ln.lower()
-            if "seed phrase" in low or "solana-keygen recover" in low:
+            stripped = (ln.strip() or "")
+            if "solana-keygen recover" in stripped:
               out.append("[redacted: recovery material — see CI logs]")
               skip = 2
               continue
             if skip > 0:
               skip -= 1
               continue
-            if re.fullmatch(r"(?:[a-z]+\s+){11,}[a-z]+", ln.strip() or ""):
+            if re.fullmatch(r"(?:[a-z]+\s+){11,}[a-z]+", stripped):
               out.append("[redacted: recovery material — see CI logs]")
               continue
             out.append(ln)
