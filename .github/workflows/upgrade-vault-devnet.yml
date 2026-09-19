@@ -88,15 +88,37 @@ jobs:
         run: |
           solana balance --keypair config/ci/deployer.json -u "$SOLANA_RPC_URL" || true
 
-      - name: Upgrade trading_vault in place
+      - name: Write program buffer (retry on RPC flakes)
         shell: bash
         run: |
           set -Eeuo pipefail
           code=1
           for i in 1 2 3; do
             code=0
-            solana program upgrade "$VAULT_PROGRAM_ID" \
-              target/deploy/trading_vault.so \
+            solana program write-buffer target/deploy/trading_vault.so \
+              -k config/ci/deployer.json \
+              -u "$SOLANA_RPC_URL" \
+              --buffer-authority config/ci/deployer.json \
+              > /tmp/buffer_$i.log 2>&1 || code=$?
+            echo "write-buffer attempt $i exit: $code"
+            tail -8 /tmp/buffer_$i.log || true
+            if [ "$code" -eq 0 ]; then break; fi
+            sleep 20
+          done
+          cat /tmp/buffer_*.log > /tmp/buffer_full.log
+          exit "$code"
+
+      - name: Upgrade trading_vault in place
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          BUFFER="$(grep -oE '[1-9A-HJ-NP-Za-km-z]{43,44}' /tmp/buffer_full.log | tail -1)"
+          test -n "$BUFFER" || { echo "could not parse buffer address"; exit 1; }
+          echo "buffer: $BUFFER"
+          code=1
+          for i in 1 2 3; do
+            code=0
+            solana program upgrade "$BUFFER" "$VAULT_PROGRAM_ID" \
               -k config/ci/deployer.json \
               -u "$SOLANA_RPC_URL" \
               --upgrade-authority config/ci/deployer.json \
@@ -145,3 +167,11 @@ jobs:
         run: |
           set -Eeuo pipefail
           solana program show "$VAULT_PROGRAM_ID" -u "$SOLANA_RPC_URL"
+
+      - name: Close self-reported failure issues
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue list --search "vault upgrade failed" --state open \
+            --json number -q '.[].number' | xargs -r -n1 gh issue close || true
