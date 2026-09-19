@@ -139,7 +139,6 @@ jobs:
               solana program extend "$VAULT_PROGRAM_ID" "$ADDITIONAL" \
                 -k config/ci/deployer.json \
                 -u "$SOLANA_RPC_URL" \
-                --upgrade-authority config/ci/deployer.json \
                 > "/tmp/extend_$i.log" 2>&1 || code=$?
               echo "extend attempt $i exit: $code"
               tail -10 "/tmp/extend_$i.log" || true
