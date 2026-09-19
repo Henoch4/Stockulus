@@ -68,10 +68,16 @@ jobs:
           echo "deployer: $DEPLOYER_ID"
 
       - name: Confirm deployer is the upgrade authority
+        # Informational only (public devnet RPC rate-limits runners): the
+        # upgrade step below is authoritative and fails loudly if wrong.
         shell: bash
         run: |
           set -Eeuo pipefail
-          solana program show "$VAULT_PROGRAM_ID" -u "$SOLANA_RPC_URL"
+          for i in 1 2 3; do
+            solana program show "$VAULT_PROGRAM_ID" -u "$SOLANA_RPC_URL" && break
+            echo "program show attempt $i failed — retrying"
+            sleep 15
+          done || echo "WARNING: program show unreachable; proceeding to upgrade"
 
       - name: Build trading_vault (SBF)
         run: cargo build-sbf --manifest-path programs/trading_vault/Cargo.toml
