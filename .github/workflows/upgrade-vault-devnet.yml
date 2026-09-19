@@ -109,6 +109,19 @@ jobs:
           cat /tmp/upgrade_*.log > /tmp/upgrade_full.log
           exit "$code"
 
+      - name: Capture CLI diagnostics (read-only)
+        if: failure()
+        shell: bash
+        run: |
+          {
+            echo "--- solana version ---"
+            solana --version || true
+            echo "--- program upgrade help ---"
+            solana program upgrade --help || true
+            echo "--- env var bytes ---"
+            echo -n "$VAULT_PROGRAM_ID" | od -c | head -5 || true
+          } > /tmp/diag.log 2>&1 || true
+
       - name: Report upgrade failure (public issue, pubkeys only — never keys)
         if: failure()
         shell: bash
@@ -120,6 +133,8 @@ jobs:
             echo "Program: ${VAULT_PROGRAM_ID}"
             echo "--- upgrade log tail ---"
             tail -60 /tmp/upgrade_full.log 2>/dev/null || echo "(no upgrade log)"
+            echo "--- CLI diagnostics ---"
+            cat /tmp/diag.log 2>/dev/null || echo "(no diagnostics)"
           } > /tmp/issue_body.txt
           gh issue create \
             --title "vault upgrade failed (run ${GITHUB_RUN_ID})" \
