@@ -1,0 +1,93 @@
+name: Upgrade trading_vault on Solana devnet (in place, ID preserved)
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - "upgrade-*"
+
+permissions:
+  contents: read
+
+env:
+  SOLANA_VERSION: "3.1.10"
+  CLUSTER: "devnet"
+  SOLANA_RPC_URL: "https://api.devnet.solana.com"
+  # Live vault program. Upgraded IN PLACE — this address must never change
+  # (docs, desk, and submission all link it). Fresh deploys mint new IDs;
+  # use deploy-devnet.yml only for brand-new programs.
+  VAULT_PROGRAM_ID: "Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF"
+
+jobs:
+  upgrade:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Solana/Agave CLI
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+
+          curl --fail --show-error --location \
+            "https://release.anza.xyz/v${SOLANA_VERSION}/install" | sh
+
+          SOLANA_BIN="$HOME/.local/share/solana/install/active_release/bin"
+
+          if [[ ! -x "$SOLANA_BIN/solana-keygen" ]]; then
+            echo "Solana CLI installation failed"
+            exit 1
+          fi
+
+          echo "$SOLANA_BIN" >> "$GITHUB_PATH"
+          export PATH="$SOLANA_BIN:$PATH"
+
+          solana --version
+          cargo --version
+
+      - name: Restore funded deployer keypair
+        # Same persistent devnet wallet as deploy-devnet.yml (repo secret
+        # DEVNET_DEPLOYER_KEY_B64). It is also the vault upgrade authority.
+        # config/ci/*.json is gitignored and excluded from artifacts.
+        shell: bash
+        env:
+          DEPLOYER_KEY_B64: ${{ secrets.DEVNET_DEPLOYER_KEY_B64 }}
+        run: |
+          set -Eeuo pipefail
+
+          test -n "${DEPLOYER_KEY_B64:-}" || {
+            echo "DEVNET_DEPLOYER_KEY_B64 is not configured (repo Settings → Secrets → Actions)"
+            exit 1
+          }
+
+          mkdir -p config/ci
+          printf '%s' "$DEPLOYER_KEY_B64" | base64 --decode > config/ci/deployer.json
+          chmod 600 config/ci/deployer.json
+
+          DEPLOYER_ID="$(solana-keygen pubkey config/ci/deployer.json)"
+          solana-keygen verify "$DEPLOYER_ID" config/ci/deployer.json
+          echo "deployer: $DEPLOYER_ID"
+
+      - name: Confirm deployer is the upgrade authority
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          solana program show "$VAULT_PROGRAM_ID" -u "$SOLANA_RPC_URL"
+
+      - name: Build trading_vault (SBF)
+        run: cargo build-sbf --manifest-path programs/trading_vault/Cargo.toml
+
+      - name: Upgrade trading_vault in place
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          solana program upgrade "$VAULT_PROGRAM_ID" \
+            target/deploy/trading_vault.so \
+            -k config/ci/deployer.json \
+            -u "$SOLANA_RPC_URL" \
+            --upgrade-authority config/ci/deployer.json
+
+      - name: Confirm new binary live
+        shell: bash
+        run: |
+          set -Eeuo pipefail
+          solana program show "$VAULT_PROGRAM_ID" -u "$SOLANA_RPC_URL"

@@ -118,6 +118,12 @@ pub mod trading_vault {
         require!(ctx.accounts.agent.key() == vault.agent, ErrorCode::OnlyAgent);
         require!(new_total_assets <= vault.max_tvl, ErrorCode::MaxTvlExceeded);
 
+        let now = Clock::get()?.unix_timestamp;
+        require!(
+            now - vault.last_attestation >= vault.attest_timelock as i64,
+            ErrorCode::AttestationTooSoon
+        );
+
         if vault.total_assets > 0 {
             let delta = if new_total_assets > vault.total_assets {
                 new_total_assets - vault.total_assets
@@ -176,13 +182,17 @@ pub struct Deposit<'info> {
     #[account(mut)]
     pub user_token_account: Account<'info, TokenAccount>,
     #[account(
-        mut,
+        init,
+        payer = user,
         seeds = [b"vault_token", vault.key().as_ref()],
-        bump
+        bump,
+        token::mint = mint,
+        token::authority = vault,
     )]
     pub vault_token_account: Account<'info, TokenAccount>,
     pub mint: Account<'info, Mint>,
     pub token_program: Program<'info, Token>,
+    pub system_program: Program<'info, System>,
 }
 
 #[derive(Accounts)]
@@ -287,4 +297,6 @@ pub enum ErrorCode {
     AttestationDeltaTooLarge,
     #[msg("Package open - withdrawals blocked")]
     PackageOpen,
+    #[msg("Attestation too soon - timelock not elapsed")]
+    AttestationTooSoon,
 }
