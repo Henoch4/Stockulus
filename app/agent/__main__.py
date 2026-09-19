@@ -96,6 +96,7 @@ async def main():
 
     await audit.close()
     await xstocks.close()
+    await agent.pyth.close()
 
 if __name__ == "__main__":
     asyncio.run(main())

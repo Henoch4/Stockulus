@@ -88,6 +88,7 @@ anchor deploy --provider.cluster devnet</pre>
             <tr><td>AGENT_KEYPAIR_PATH <span class="badge req">required</span></td><td>Path to the agent's Solana keypair file. Devnet throwaway — never reuse on mainnet.</td></tr>
             <tr><td>CLAWPUMP_API_KEY <span class="badge">optional</span></td><td>Enables the agent-launch demo. Missing = that part is skipped, rest still runs.</td></tr>
             <tr><td>NANSEN_API_KEY <span class="badge">optional</span></td><td>On-chain flow signal. Missing = that signal stays neutral.</td></tr>
+            <tr><td>PYTH_API_KEY <span class="badge">optional</span></td><td>Live SOL/USD for swap sizing (keyed Hermes). Missing = SOL_PRICE_USD estimate is used, no network call.</td></tr>
             <tr><td>RISK_STATE_PATH</td><td>Where daily loss/trade counters persist across restarts.</td></tr>
             <tr><td>QUOTE_MINT / QUOTE_DECIMALS</td><td>Quote asset for the DBC pools — wSOL on devnet, USDC on mainnet.</td></tr>
             <tr><td>DBC_POOL_AAPLX / TSLAX / NVDAX</td><td>Pool address for each tokenized stock, from <span class="mono">create_pool.js</span>.</td></tr>

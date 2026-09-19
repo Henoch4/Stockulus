@@ -29,7 +29,7 @@ Stockulus/
   HACKATHON_SUBMISSION.md    <- track mapping + Solscan evidence
   Anchor.toml                <- LIVE devnet IDs (516a5K… audit, Gd7Ciu… vault)
   Cargo.toml                 <- workspace: programs/trade_audit_trail + trading_vault
-  .env.example               <- all vars incl. QUOTE_MINT/DECIMALS, SOL_PRICE_USD, NANSEN_API_KEY
+  .env.example               <- all vars incl. QUOTE_MINT/DECIMALS, SOL_PRICE_USD, NANSEN_API_KEY, PYTH_API_KEY, SERVE_PORT/AGENT_RUN/AGENT_INTERVAL_S
   config/profiles.yaml       <- curator allowlist (all max_leverage 1.0) DONE
   config/fee_ledger.json     <- STCKLS fee pipeline ledger (agent-appended) DONE
   config/supporters.json     <- supporters wall (goal 0.15 SOL) DONE
@@ -256,7 +256,7 @@ Python logger: parsed `Idl` + `Context` + snake_case + systemProgram + `initiali
 `set_package_open` (agent-only). Deployed via CI; deposit/withdraw flow PROVEN 2026-09-19 on mock SPL USDC (no devnet Circle USDC): init 2iPxDG6… + deposit CXwCf9As… + attest 65yZcSHE… + timelock/delta-cap expected-fail probes + withdraw 3Rf2BHV1… to zero.
 
 ### 4.8 Python Solana executor + audit logger (BUILT + PROVEN on devnet)
-- `meteora_executor.py`: subprocess `node app/ts/dist/<script>.js`, JSON stdout, 60s timeout; ts_dir path fixed; USD→wSOL conversion via `SOL_PRICE_USD` (Pyth feed Phase C).
+- `meteora_executor.py`: subprocess `node app/ts/dist/<script>.js`, JSON stdout, 60s timeout; ts_dir path fixed; USD→wSOL conversion via `pyth.py` (keyed Hermes live, else `SOL_PRICE_USD` env fallback — Hermes key-gating verified 2026-09-19, free trial at pythdata.app/signup).
 - `audit_logger_sol.py`: parsed `Idl.from_json` + `Context` + snake_case accounts + systemProgram/agentState completeness + `initialize()`; `log_decision` BEFORE executor call; RPC failure → block trade. Keypair loader accepts solana-keygen JSON (was hex-only).
 
 ---
@@ -322,7 +322,7 @@ Bugs banked: audit `package_id`, DBC pool env resolution, dry-run default true, 
 | T7 | AuditTrail verify + IDL + program ID | DONE + DEPLOYED 516a5K… (hand-IDL + anchorpy Context fixes proven on-chain) |
 | T8 | Vault verify + IDL + program ID | DONE + DEPLOYED Gd7Ciu… + UPGRADED in place 2026-09-19 (slot 500668814; deposit flow PROVEN on mock USDC 9K4iVBL1…, see HACKATHON_SUBMISSION.md) |
 | T9 | carry + regime + DBC config | DONE (dbc_config.py superseded: regime→`regimeScale` argv in create_config.js) |
-| T10 | TS scripts + devnet pools | DONE ×3 (config `3WDNBk…`, dAAPLx/dTSLAx/dNVDAx pools, live swaps; +wrap_sol/create_mint/inspect_signers) |
+| T10 | TS scripts + devnet pools | DONE ×4 (calm config `3WDNBk…` + stress config `7rhZYf…` (exponential 900bps), dAAPLx/dTSLAx/dNVDAx pools + dTSLAx-s stress pool `FszKznx6…` with seed fill, live swaps; +wrap_sol/create_mint/inspect_signers/top_up_vault) |
 | T11 | audit logger + executor + risk/integrity | DONE (all proven in T13 live cycle) |
 
 ### P2 — actual outcomes

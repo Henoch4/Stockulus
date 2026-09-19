@@ -38,6 +38,7 @@ from .curator import CuratorAgent
 from .data_integrity import DataIntegrityGate, IntegrityResult
 from .audit_trail import AuditLog
 from .regime_hmm import infer_regime_simple, dbc_action_for_regime
+from .pyth import PythClient
 from .stock_carry import tokenized_stock_carry_signal, vault_9010_allocation
 from .dashboard import Dashboard
 
@@ -245,6 +246,7 @@ class AutonomousTradingAgent:
         audit_log: AuditLog | None = None,
         expected_equity: float | None = None,
         regime_window: int = 50,
+        pyth_client: PythClient | None = None,
     ):
         self.xstocks = xstocks_client
         self.meteora = meteora_executor
@@ -260,6 +262,8 @@ class AutonomousTradingAgent:
         self.integrity_gate = integrity_gate
         self.audit_log = audit_log
         self.expected_equity = expected_equity
+        # Pyth SOL/USD (keyed Hermes; keyless = env fallback, see pyth.py).
+        self.pyth = pyth_client or PythClient()
 
         # Pattern system
         self.pattern_registry = PatternRegistry()
@@ -467,8 +471,11 @@ class AutonomousTradingAgent:
         if not self.dry_run:
             try:
                 # order.size is USD notional; DBC swap takes QUOTE-token units.
-                # Convert via SOL price (env SOL_PRICE_USD; Pyth feed is Phase C).
-                sol_price = float(_os.getenv("SOL_PRICE_USD", "150.0") or 150.0)
+                # SOL price: Pyth Hermes when keyed, else SOL_PRICE_USD env, else 150.
+                sol_price, price_source = await self.pyth.sol_usd_with_fallback(
+                    float(_os.getenv("SOL_PRICE_USD", "150.0") or 150.0)
+                )
+                logger.debug(f"SOL/USD {sol_price} via {price_source}")
                 amount_quote = float(order.size) / sol_price if sol_price > 0 else 0.0
                 swap_result = self.meteora.swap(
                     pool=order.inst_id,  # DBC pool pubkey

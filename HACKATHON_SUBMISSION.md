@@ -105,6 +105,7 @@ User deposits USDC → TradingVault mints shares
 | dAAPLx pool (dAAPLx/wSOL) | ✅ | `CVrD4XycbRgMhWjr6tTQ6ebV41NGAG95cV8NccCvvPUU` ([tx](https://solscan.io/tx/2ri6Y3NmXQqS4pSpv536DDJr7hnNN7Csbgmh5hxR1wqqs177po5Jr4UbC6Bw4bSZiHZRJXb99N8TXTyLJUcLp221?cluster=devnet)) |
 | dTSLAx pool | ✅ | `84B8P25ec51c2szffJUEkkyMpUf81eqBFWHNH9pwDEsU` |
 | dNVDAx pool | ✅ | `EebJJc253Rg5BJgiHCMkvGo2GzieZToSkDKvtw2FhqdH` |
+| dTSLAx-s pool (stress fees) | ✅ | `FszKznx6E1P92PWT4rC9CQPzCmxv4N9yeXTBXvo4eLcU` (base `24gyHjkznt1ukECuB2iMCZAYrTyyuERwR3eToeCsVKMJ`, stress config `7rhZYf…`, seed fill [tx](https://solscan.io/tx/5uv3f8SXcdLTzDL1GN4ujVyUWNdEcPCfAXBZkaSaWF1ghUrecJDWQrREJ9aFXiZ2JiAzB4NZ8oUAY52NJtwtDkTE?cluster=devnet)) |
 | Agent state init + risk params | ✅ | `fbD3Sx…QUc48`, `2k9LJap3…3enLMqW5` |
 | Decision logged on-chain | ✅ | `dec_0ff8e8bb4d80` (LONG AAPLx, 9000bps, $4.50) |
 | Live DBC swap ($4.50 → 29,699 dAAPLx) | ✅ | [tx](https://solscan.io/tx/AvubGLJ8q4JiF4ub5ejVmbjBZjMXiu9aBX2gJNxGsasXR8D5tNS6eezHiSQC61vsFMS2fKggq9AF87HQ3afmLoD?cluster=devnet) |
