@@ -181,8 +181,11 @@ pub struct Deposit<'info> {
     pub user: Signer<'info>,
     #[account(mut)]
     pub user_token_account: Account<'info, TokenAccount>,
+    // init_if_needed: first deposit creates the vault's token account; later
+    // deposits reuse it. Address + mint + authority are all constrained, so
+    // a pre-existing account can only be the genuine vault account.
     #[account(
-        init,
+        init_if_needed,
         payer = user,
         seeds = [b"vault_token", vault.key().as_ref()],
         bump,

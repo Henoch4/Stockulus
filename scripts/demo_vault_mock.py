@@ -85,7 +85,15 @@ async def main() -> None:
     txs: dict[str, str] = {}
 
     print("== 1/6 mock USDC setup ==")
-    setup = run_mock_setup(rpc_url, keypair_path, vault_program_id)
+    # The vault binds to ONE mint forever (vault.mint is immutable) — reuse
+    # the recorded demo mint across runs instead of minting a new one.
+    mock_path = Path(__file__).resolve().parent.parent / "config" / "mock_usdc.json"
+    if mock_path.exists():
+        setup = json.loads(mock_path.read_text(encoding="utf-8"))
+        print(f"  reusing recorded demo mint {setup['mint']}")
+    else:
+        setup = run_mock_setup(rpc_url, keypair_path, vault_program_id)
+        mock_path.write_text(json.dumps(setup, indent=2), encoding="utf-8")
     mint = Pubkey.from_string(setup["mint"])
     ata = Pubkey.from_string(setup["agentAta"])
     print(f"  mint={mint} ata={ata} setup_tx={setup['mintTx']}")
@@ -118,8 +126,22 @@ async def main() -> None:
     assert v.total_shares == v0.total_shares + exp_shares, (v0.total_shares, v.total_shares)
     print(f"  assets={v.total_assets} shares={v.total_shares} tx={txs['deposit']}")
 
-    print("== 4/6 attest +1% (within 500bps cap) ==")
-    drifted = v.total_assets * 101 // 100
+    print("== 4/6 top-up 0.05 yield + attest (within 500bps cap) ==")
+    import subprocess as _sp
+
+    YIELD = 50_000  # 0.05 mock-USDC of strategy yield (1% of first deposit)
+    _ts_dir = Path(__file__).resolve().parent.parent / "app" / "ts"
+    _env = {**_sp.os.environ, "RPC_URL": rpc_url, "KEYPAIR_PATH": keypair_path,
+            "VAULT_PROGRAM_ID": vault_program_id}
+    _cmd = ["node", str(_ts_dir / "dist" / "top_up_vault.js"), str(mint), str(YIELD)]
+    _r = _sp.run(_cmd, capture_output=True, text=True, env=_env, timeout=120)
+    if _r.returncode != 0:
+        raise RuntimeError(f"top_up_vault failed: {_r.stderr[-2000:]}")
+    topup = json.loads(_r.stdout.strip())
+    print(f"  yield in: {topup['vaultBalance']} held, tx={topup['tx']}")
+    txs["topup_yield"] = topup["tx"]
+    v = await client.read_vault(kp.pubkey())
+    drifted = v.total_assets + YIELD
     for attempt in range(3):
         try:
             txs["attest_ok"] = await client.attest_total_assets(drifted)
