@@ -90,21 +90,39 @@ jobs:
         run: |
           solana balance --keypair config/ci/deployer.json -u "$SOLANA_RPC_URL" || true
 
-      - name: Reclaim abandoned buffers (best-effort, frees ~2.9 SOL)
-        # Failed runs left two funded buffers behind (see issues #5/#6).
-        # Buffer authority is the deployer, so only this key can close them.
+      - name: Reclaim abandoned buffers (loud, then gate on balance)
+        # Failed runs left funded buffers behind (~1.46 SOL each). List by
+        # authority first (proves visibility), close each explicitly, then
+        # REFUSE to continue unless the deployer holds >= 2 SOL — creating
+        # another buffer on an empty wallet just locks more rent.
         shell: bash
         env:
-          ABANDONED_BUFFERS: "FGGzX4TNcoRFiB3EXCXgMXuEHrmRuF5NKyi9FcrQtU5n 6wAUCP54rjG1SgYZJHqnV3c6k1xYBJEdU8SLsNs8gxXF"
+          ABANDONED_BUFFERS: "FGGzX4TNcoRFiB3EXCXgMXuEHrmRuF5NKyi9FcrQtU5n 6wAUCP54rjG1SgYZJHqnV3c6k1xYBJEdU8SLsNs8gxXF 8mQKXHaGxVZ7L7NSpGeEZxSaLrVLt76LEieKCLjLZfpo 6JQaTrbmaRLs2KDjdefKFJYU5b7arkRQeZe8bJsssRsS"
         run: |
           set -Eeuo pipefail
-          for buf in $ABANDONED_BUFFERS; do
-            solana program close "$buf" \
+          {
+            echo "--- balance before ---"
+            solana balance --keypair config/ci/deployer.json -u "$SOLANA_RPC_URL" || true
+            echo "--- buffers visible to deployer ---"
+            solana program show --buffers \
               --buffer-authority config/ci/deployer.json \
-              -k config/ci/deployer.json \
-              -u "$SOLANA_RPC_URL" || echo "close $buf failed (may already be closed)"
-          done
-          solana balance --keypair config/ci/deployer.json -u "$SOLANA_RPC_URL" || true
+              -u "$SOLANA_RPC_URL" || true
+            for buf in $ABANDONED_BUFFERS; do
+              echo "--- closing $buf ---"
+              solana program close "$buf" \
+                --buffer-authority config/ci/deployer.json \
+                -k config/ci/deployer.json \
+                -u "$SOLANA_RPC_URL" || echo "close $buf failed (may already be closed)"
+            done
+            echo "--- balance after ---"
+            solana balance --keypair config/ci/deployer.json -u "$SOLANA_RPC_URL" || true
+          } 2>&1 | tee /tmp/reclaim.log
+          BAL="$(solana balance --keypair config/ci/deployer.json -u "$SOLANA_RPC_URL" | awk '{print $1}')"
+          echo "deployer balance: ${BAL:-0} SOL"
+          awk -v b="${BAL:-0}" 'BEGIN { exit !(b >= 2.0) }' || {
+            echo "FUNDING GATE: deployer below 2 SOL — send devnet SOL to 2vs2CxnQ4Xz4q8xcQzZHbXorSPyBFZmWhFa2aFG6dmSe (https://faucet.solana.com) then re-run. NOT creating another buffer."
+            exit 1
+          }
 
       - name: Write program buffer (retry on RPC flakes)
         shell: bash
@@ -211,6 +229,8 @@ jobs:
           {
             echo "Upgrade run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
             echo "Program: ${VAULT_PROGRAM_ID}"
+            echo "--- reclaim log ---"
+            cat /tmp/reclaim.log 2>/dev/null || echo "(no reclaim log)"
             echo "--- buffer log tail ---"
             tail -20 /tmp/buffer_full.log 2>/dev/null || echo "(no buffer log)"
             echo "--- extend log tail ---"
