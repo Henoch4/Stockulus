@@ -109,10 +109,15 @@ User deposits USDC → TradingVault mints shares
 | Live DBC swap ($4.50 → 29,699 dAAPLx) | ✅ | [tx](https://solscan.io/tx/AvubGLJ8q4JiF4ub5ejVmbjBZjMXiu9aBX2gJNxGsasXR8D5tNS6eezHiSQC61vsFMS2fKggq9AF87HQ3afmLoD?cluster=devnet) |
 | dTSLAx seed swap (0.02 wSOL) | ✅ | [tx](https://solscan.io/tx/5yMjU9Qw4Y1sDTD97ehPBtYPhms21Vnd5AZRK7k9HoeZmh4CDwbjX5YyEbnKEBLNZv3VAzaJfeRm9FyR74VaCfjh?cluster=devnet) |
 | dNVDAx seed swap (0.02 wSOL) | ✅ | [tx](https://solscan.io/tx/2B6rsqjWNBNnQ6tJcniqMjG8Hpqbo9onymkZmtYJiN3YXv9RVz6BiDdpMkuddHhj5jTyB3HBPqR9KsMeEorMoLwP?cluster=devnet) |
-| Vault deposit/withdraw | ⏳ | Program live; flow untested (no devnet USDC) — mainnet/Phase C |
+| Vault initialize | ✅ | [tx](https://solscan.io/tx/2iPxDG6XYHz34A8GkXMP9vvKP16rztPEPgwYtGpFKnqCVh48noTfww1X2Uk3nJXYeRvqwazyV45amGBaGZqjiomA?cluster=devnet) (min 1.0, max TVL 100.0, timelock 5s, delta cap 500bps) |
+| Vault deposit 5.0 mock-USDC | ✅ | [tx](https://solscan.io/tx/CXwCf9AsVyrNvu7zEHKguEJsvnak7Mibxfe4dsksFR6N8Lo9zdog3tv6K671NRnDKrdYK8BM2NGcdMx8UEmXuuc?cluster=devnet) (5.0 → 5.0 shares, 1:1) |
+| Vault attest +1% | ✅ | [tx](https://solscan.io/tx/65yZcSHEEwtBAa3sDRGSjBsbQdggZidJup7EPJaJUxXvxEbrEcpHtXYVMPGMokr3bNmmwCQ5ogCZuj64UjRb8Gav?cluster=devnet) (5.05M backed by 0.05 top-up yield) |
+| Vault timelock guardrail | ✅ | Immediate re-attest rejected on-chain (expected-fail probe) |
+| Vault delta-cap guardrail | ✅ | +50% attestation rejected on-chain (expected-fail probe) |
+| Vault withdraw to zero | ✅ | [tx](https://solscan.io/tx/3Rf2BHV1Q97U1MdhK4BeZjJUjYwc3neEXouDkejk7Q6KMKn4eiM8QX4LZAfEWUjVgdZ4v55hMoFDr4yFkzcSCP1E?cluster=devnet) (assets 0, shares 0) |
 | Clawpump agent | ✅ live / ⏳ token | Agent `756d9f58-…` live; STCKLS launch pending ~0.15 SOL funding |
 
-**Honest disclosures:** demo mints (`dAAPLx`) mirror xStocks decimals but are NOT Backed equity (no xStocks exist on devnet — verified on-chain); pools are thin (devnet dust liquidity); mainnet needs the transfer-hook DBC path for real xStocks (transferHook/pausable extensions confirmed on mainnet AAPLx).
+**Honest disclosures:** demo mints (`dAAPLx`) mirror xStocks decimals but are NOT Backed equity (no xStocks exist on devnet — verified on-chain); pools are thin (devnet dust liquidity); the vault loop ran on a mock SPL USDC (`9K4iVBL1YuqZvZAR36Bw4s6uSeB7K9SeBAoqKAZ9ZrPE`, 6dp) since devnet has no Circle USDC — same Token program mainnet USDC uses; mainnet needs the transfer-hook DBC path for real xStocks (transferHook/pausable extensions confirmed on mainnet AAPLx). Vault program upgraded in place 2026-09-19 (slot 500668814) to create its token account on first deposit and enforce the attestation timelock; program ID unchanged.
 
 ## Bounty Tracks
 

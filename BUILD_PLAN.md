@@ -79,7 +79,7 @@ Stockulus/
 | `src/data_integrity.py` | copy + `check_corporate_action()` | done |
 | `src/audit_trail.py` | copy verbatim | done |
 | `contracts/TradeAuditTrail.sol` | ported to `programs/trade_audit_trail` | DEPLOYED 516a5K… (4 compile fixes + IDL sync proven live) |
-| `contracts/TradingVault.sol` | ported to `programs/trading_vault` | DEPLOYED Gd7Ciu… (deposit flow untested — no devnet USDC) |
+| `contracts/TradingVault.sol` | ported to `programs/trading_vault` | DEPLOYED Gd7Ciu… + UPGRADED in place 2026-09-19 (slot 500668814; deposit flow PROVEN on mock USDC 9K4iVBL1…, see HACKATHON_SUBMISSION.md) |
 | `ml/pipeline.py`, `features.py`, `labeling.py` | research only, post-submission; NOT demo path | parked |
 | `src/execution/executor.py` OKX part | REWRITTEN as Solana executor | done (DBC swap + fill collar) |
 | `src/audit_logger.py` EVM part | REPLACED by `audit_logger_sol.py` | done (init/params/decision/receipt all confirmed on-chain) |
@@ -250,10 +250,10 @@ init tx `fbD3Sx…`, risk-params txs, `log_decision` (`dec_0ff8e8bb4d80`) + exec
 Compile fixes banked: `#[instruction]` seeds, String clones. `Anchor.toml` + `declare_id!` carry live IDs.
 Python logger: parsed `Idl` + `Context` + snake_case + systemProgram + `initialize()`; log BEFORE execute, RPC failure blocks trade.
 
-### 4.7 Anchor program 2: trading_vault (BUILT + DEPLOYED Gd7Ciu…; deposit flow untested — no devnet USDC)
+### 4.7 Anchor program 2: trading_vault (BUILT + DEPLOYED Gd7Ciu… + UPGRADED in place 2026-09-19, slot 500668814; deposit flow PROVEN on mock USDC — see HACKATHON_SUBMISSION.md)
 `initialize` (owner/agent/mint/caps), `deposit` (min/max checks, USDC transfer in, pro-rata share mint),
 `withdraw` (blocked when `package_open`, burn + transfer out), `attest_total_assets` (agent-only, max TVL, delta cap),
-`set_package_open` (agent-only). Deployed via CI; deposit/withdraw flow untested (no devnet USDC) — mainnet/Phase C.
+`set_package_open` (agent-only). Deployed via CI; deposit/withdraw flow PROVEN 2026-09-19 on mock SPL USDC (no devnet Circle USDC): init 2iPxDG6… + deposit CXwCf9As… + attest 65yZcSHE… + timelock/delta-cap expected-fail probes + withdraw 3Rf2BHV1… to zero.
 
 ### 4.8 Python Solana executor + audit logger (BUILT + PROVEN on devnet)
 - `meteora_executor.py`: subprocess `node app/ts/dist/<script>.js`, JSON stdout, 60s timeout; ts_dir path fixed; USD→wSOL conversion via `SOL_PRICE_USD` (Pyth feed Phase C).
@@ -320,7 +320,7 @@ Bugs banked: audit `package_id`, DBC pool env resolution, dry-run default true, 
 | ID | Task | Outcome |
 |---|---|---|
 | T7 | AuditTrail verify + IDL + program ID | DONE + DEPLOYED 516a5K… (hand-IDL + anchorpy Context fixes proven on-chain) |
-| T8 | Vault verify + IDL + program ID | DONE + DEPLOYED Gd7Ciu… (deposit flow untested — no devnet USDC) |
+| T8 | Vault verify + IDL + program ID | DONE + DEPLOYED Gd7Ciu… + UPGRADED in place 2026-09-19 (slot 500668814; deposit flow PROVEN on mock USDC 9K4iVBL1…, see HACKATHON_SUBMISSION.md) |
 | T9 | carry + regime + DBC config | DONE (dbc_config.py superseded: regime→`regimeScale` argv in create_config.js) |
 | T10 | TS scripts + devnet pools | DONE ×3 (config `3WDNBk…`, dAAPLx/dTSLAx/dNVDAx pools, live swaps; +wrap_sol/create_mint/inspect_signers) |
 | T11 | audit logger + executor + risk/integrity | DONE (all proven in T13 live cycle) |
@@ -329,7 +329,7 @@ Bugs banked: audit `package_id`, DBC pool env resolution, dry-run default true, 
 | ID | Task | State |
 |---|---|---|
 | T12 | Wire loop §7 | DONE (tested: 3/3/3 offline; live $5 cycle fully on-chain) |
-| T13 | Devnet demo + audit query | DONE (init/params/decision/swap/receipt txs banked; vault deposit pending) |
+| T13 | Devnet demo + audit query | DONE (init/params/decision/swap/receipt/vault-loop txs banked; vault loop proven on mock USDC) |
 | T14 | README + submission + video + submit | DOCS DONE (real IDs/txs, VIDEO_SCRIPT.md); VIDEO + SUBMIT open (human) |
 
 **Collision rule:** P0/P1 parallel OK (disjoint files). P2 single-threaded. `git status` clean between tasks.

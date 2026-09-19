@@ -286,7 +286,11 @@ jobs:
         shell: bash
         run: |
           set -Eeuo pipefail
-          solana program show "$VAULT_PROGRAM_ID" -u "$SOLANA_RPC_URL"
+          for i in 1 2 3 4 5; do
+            solana program show "$VAULT_PROGRAM_ID" -u "$SOLANA_RPC_URL" && break
+            echo "confirm attempt $i failed (devnet RPC flake) — retrying"
+            sleep 20
+          done
 
       - name: Close self-reported failure issues
         shell: bash
