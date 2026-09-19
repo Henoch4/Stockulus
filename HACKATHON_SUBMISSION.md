@@ -101,6 +101,7 @@ User deposits USDC → TradingVault mints shares
 | TradeAuditTrail deployed | ✅ | `516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS` ([Solscan](https://solscan.io/account/516a5KdUr5oLJTVQZaiDWxqgRSQ1xPHSvFoQbCmwVtRS?cluster=devnet)) |
 | TradingVault deployed | ✅ | `Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF` ([Solscan](https://solscan.io/account/Gd7Ciu6KgPwoajZZgAUNethJAFNe4s3nhJV64XNRz9aF?cluster=devnet)) |
 | DBC config (Token-2022, calm) | ✅ | `3WDNBkpE67v2wzMWY1mgyyAuE4eugFBbgniRa1tqojFY` ([tx](https://solscan.io/tx/S2oKjam2ppdLNGyExxXfXrc6fheF3fBWgECbGbCFrn8dqzPP6G9rBJJJPxUHfiCsvnQdr6tPGVfJqBv3izzLQFx?cluster=devnet)) |
+| DBC config (Token-2022, stress) | ✅ | `7rhZYfkUHcbHYkkv2FBGqE8KnQC8f66WsGM8fBuv7P2W` ([tx](https://solscan.io/tx/42CRBsgKCy72ZbvHEj3FsRxdLP1EWwGxovhgUBu8kEfXM3vSnc89wSQumDQW9GWLer9upHqAu37pUkgwuA6e8GAa?cluster=devnet)) — exponential 900bps, regimeScale 0.7 |
 | dAAPLx pool (dAAPLx/wSOL) | ✅ | `CVrD4XycbRgMhWjr6tTQ6ebV41NGAG95cV8NccCvvPUU` ([tx](https://solscan.io/tx/2ri6Y3NmXQqS4pSpv536DDJr7hnNN7Csbgmh5hxR1wqqs177po5Jr4UbC6Bw4bSZiHZRJXb99N8TXTyLJUcLp221?cluster=devnet)) |
 | dTSLAx pool | ✅ | `84B8P25ec51c2szffJUEkkyMpUf81eqBFWHNH9pwDEsU` |
 | dNVDAx pool | ✅ | `EebJJc253Rg5BJgiHCMkvGo2GzieZToSkDKvtw2FhqdH` |

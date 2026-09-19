@@ -9,6 +9,7 @@ import asyncio
 import logging
 import time
 import uuid
+from collections import deque
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 
@@ -271,6 +272,9 @@ class AutonomousTradingAgent:
         self._risk_lock = asyncio.Lock()
         self._audit_lock = asyncio.Lock()
         self._current_regime: int = 0
+        self._cycle_count: int = 0
+        # Rolling window of approved decisions for the live desk feed.
+        self._recent_decisions: deque[dict] = deque(maxlen=20)
 
         # Dashboard
         self.dashboard = Dashboard(
@@ -421,6 +425,8 @@ class AutonomousTradingAgent:
             order, self.agent_id,
             current_price=market_data[asset]["spot_price"],
             current_price_timestamp=market_data[asset]["timestamp"],
+            # Dry runs must not consume the persisted daily trade budget.
+            count_trade=not self.dry_run,
         )
         if not risk_result.approved:
             out["errors"].append(f"Risk gate rejected: {risk_result.reason}")
@@ -441,7 +447,8 @@ class AutonomousTradingAgent:
             "risk_hash": self.risk_gate.compute_risk_hash(),
         }
 
-        if self.onchain_logger:
+        # Dry runs never write to chain (no fee burn in the background loop).
+        if self.onchain_logger and not self.dry_run:
             try:
                 await self.onchain_logger.log_decision(**payload)
             except Exception as e:
@@ -575,9 +582,18 @@ class AutonomousTradingAgent:
                 result.executions.extend(asset_result["executions"])
                 result.errors.extend(asset_result["errors"])
 
-        # 4. Record pattern metrics
+        # 4. Record pattern metrics + desk feed window
         result.pattern_metrics = self.pattern_registry.get_metrics()
         result.regime = regime
+        for d in result.decisions:
+            self._recent_decisions.appendleft({
+                "time": result.timestamp,
+                "decision_id": d.get("decision_id"),
+                "asset": d.get("asset"),
+                "signal": d.get("signal"),
+                "confidence_bps": d.get("confidence_bps"),
+                "size_usd": d.get("size_usd"),
+            })
 
         return result
 
@@ -586,6 +602,7 @@ class AutonomousTradingAgent:
         while True:
             try:
                 result = await self.run_trading_cycle(assets)
+                self._cycle_count += 1
                 logger.info(f"Cycle complete: {len(result.executions)} execs, regime={result.regime}")
                 if result.errors:
                     logger.warning(f"Errors: {result.errors}")

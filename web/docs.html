@@ -124,6 +124,8 @@ errors: []</span></pre>
             <tr><td>Audit-trail program</td><td>Deployed on devnet, verifiable on Solscan</td></tr>
             <tr><td>Vault program</td><td>Deployed on devnet — share accounting is still being hardened before real deposits</td></tr>
             <tr><td>Meteora pools</td><td>Created for all three tracked assets</td></tr>
+            <tr><td>Fee configs</td><td>Calm (linear) and stress (exponential 900bps) both live — regime picks between them</td></tr>
+            <tr><td>Background agent</td><td>Runs a dry-run cycle every 5 minutes while the desk is served — decisions stream into the log, nothing is swapped</td></tr>
             <tr><td>End-to-end trade</td><td>Proven once, live — signal → risk gate → on-chain log → real swap</td></tr>
             <tr><td>Vault deposits</td><td>Not yet open — waiting on the share-accounting fix above</td></tr>
             <tr><td>Fee buyback + supporters wall</td><td>Live and tracked, currently at zero — no fees earned yet</td></tr>

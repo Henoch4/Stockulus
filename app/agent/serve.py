@@ -97,12 +97,40 @@ async def build_dashboard() -> Dashboard:
     )
 
 
+_runner_task: "asyncio.Task | None" = None
+_dashboard: Dashboard | None = None
+
+
+def _lifespan():
+    """Start/stop the background agent loop (AGENT_RUN, default on)."""
+    from contextlib import asynccontextmanager
+
+    @asynccontextmanager
+    async def lifespan(_app):
+        global _runner_task
+        if (
+            os.getenv("AGENT_RUN", "true").strip().lower() != "false"
+            and _dashboard is not None
+        ):
+            interval = int(os.getenv("AGENT_INTERVAL_S", "300"))
+            _runner_task = asyncio.create_task(
+                _dashboard.agent.run(["AAPLx", "TSLAx", "NVDAx"], interval)
+            )
+        yield
+        if _runner_task is not None:
+            _runner_task.cancel()
+
+    return lifespan
+
+
 def create_app() -> "FastAPI":
+    global _dashboard
     from fastapi import FastAPI
     from fastapi.staticfiles import StaticFiles
 
     dashboard: Dashboard = asyncio.run(build_dashboard())
-    app = FastAPI(title="Stockulus desk")
+    _dashboard = dashboard
+    app = FastAPI(title="Stockulus desk", lifespan=_lifespan())
     create_dashboard_routes(app, dashboard)
 
     web_dir = Path(__file__).resolve().parent.parent.parent / "web"

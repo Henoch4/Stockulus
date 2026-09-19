@@ -209,6 +209,15 @@ class Dashboard:
             "max_concurrent": self.multi_leg.max_concurrent_packages,
         }
 
+    def get_recent_decisions(self) -> dict:
+        """Rolling window of approved decisions for the live desk feed."""
+        recent = list(getattr(self.agent, "_recent_decisions", []))
+        return {
+            "count": len(recent),
+            "total_cycles": getattr(self.agent, "_cycle_count", 0),
+            "decisions": recent,
+        }
+
 
 # ─── FastAPI/HTTP endpoint helper (optional) ───
 
@@ -244,6 +253,10 @@ def create_dashboard_routes(app, dashboard: Dashboard):
     @app.get("/metrics/execution")
     async def execution_metrics():
         return dashboard.get_execution_summary()
+
+    @app.get("/metrics/decisions")
+    async def decision_metrics():
+        return dashboard.get_recent_decisions()
 
     @app.get("/metrics/fees")
     async def fee_metrics():

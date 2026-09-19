@@ -124,6 +124,16 @@
         <div class="addr">EebJJc253Rg5BJgiHCMkvGo2GzieZToSkDKvtw2FhqdH</div>
         <a class="open" href="https://solscan.io/account/EebJJc253Rg5BJgiHCMkvGo2GzieZToSkDKvtw2FhqdH?cluster=devnet" target="_blank" rel="noopener">View on Solscan →</a>
       </div>
+      <div class="receipt">
+        <div class="k">Fee config — calm (linear 120bps)</div>
+        <div class="addr">3WDNBkpE67v2wzMWY1mgyyAuE4eugFBbgniRa1tqojFY</div>
+        <a class="open" href="https://solscan.io/account/3WDNBkpE67v2wzMWY1mgyyAuE4eugFBbgniRa1tqojFY?cluster=devnet" target="_blank" rel="noopener">View on Solscan →</a>
+      </div>
+      <div class="receipt">
+        <div class="k">Fee config — stress (exponential 900bps)</div>
+        <div class="addr">7rhZYfkUHcbHYkkv2FBGqE8KnQC8f66WsGM8fBuv7P2W</div>
+        <a class="open" href="https://solscan.io/account/7rhZYfkUHcbHYkkv2FBGqE8KnQC8f66WsGM8fBuv7P2W?cluster=devnet" target="_blank" rel="noopener">View on Solscan →</a>
+      </div>
       <div class="receipt tx">
         <div class="k">First real swap — proof the pipeline works end to end</div>
         <div class="addr">0.03 wSOL → 29,699 dAAPLx</div>
@@ -295,10 +305,33 @@
     }).catch(function () {});
   }
 
+  var seenDecisions = {};
+  function fmtEpoch(ts) {
+    return new Date(ts * 1000).toTimeString().slice(0, 8) + ' UTC (live)';
+  }
+  function loadDecisions() {
+    fetch('metrics/decisions').then(function (r) {
+      if (!r.ok) throw new Error('no decisions');
+      return r.json();
+    }).then(function (d) {
+      (d.decisions || []).slice().reverse().forEach(function (x) {
+        if (!x.decision_id || seenDecisions[x.decision_id]) return;
+        seenDecisions[x.decision_id] = true;
+        addEntry({
+          time: fmtEpoch(x.time),
+          headline: 'Buy <b>' + x.asset + '</b> — ' + (x.signal || 'carry signal') + ', confidence ' + Math.round((x.confidence_bps || 0) / 100) + '%',
+          detail: 'size $' + (x.size_usd || 0) + ' · desk cycle (dry run, nothing swapped)',
+          verdict: 'Approved (live)',
+          demo: true
+        });
+      });
+    }).catch(function () {});
+  }
+
   fetch('metrics/all').then(function (r) {
     if (!r.ok) throw new Error('no metrics');
     return r.json();
-  }).then(applyMetrics).catch(function () {
+  }).then(function (m) { applyMetrics(m); loadDecisions(); }).catch(function () {
     // Offline: clearly-labeled demo simulation only.
     var demoQueue = [
       { asset: 'TSLAx', conf: 82, detail: 'Basis 12bps, carry 61bps annualized', verdict: 'Approved' },
@@ -324,7 +357,7 @@
     fetch('metrics/all').then(function (r) {
       if (!r.ok) throw new Error('no metrics');
       return r.json();
-    }).then(applyMetrics).catch(function () {});
+    }).then(function (m) { applyMetrics(m); loadDecisions(); }).catch(function () {});
   }, 30000);
 </script>
 </body>

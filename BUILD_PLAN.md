@@ -340,7 +340,7 @@ Bugs banked: audit `package_id`, DBC pool env resolution, dry-run default true, 
 - [x] GitHub: https://github.com/Henoch4/Stockulus (public, pushed)
 - [x] Live devnet demo (evidence table in HACKATHON_SUBMISSION.md — every row Solscan-linked)
 - [x] Main track: vault (deployed) + carry (live signal) + audit trail (live receipts)
-- [x] DBC bounty: Token-2022 config + 3 pools + verified swaps + regime-tuned fee code
+- [x] DBC bounty: Token-2022 calm config (3WDNBk…) + stress config (7rhZYf…, exponential 900bps) + 3 pools + verified swaps + regime-tuned fee code
 - [ ] Clawpump bounty: agent live + key wired; token launch pending ~0.15 SOL funding
 - [ ] Video walkthrough (script: `docs/VIDEO_SCRIPT.md` — needs voice/screens, human)
 - [ ] Submit Project on hackathons.solana.com (human)
