@@ -100,8 +100,6 @@ jobs:
         # REFUSE to continue unless the deployer holds >= 2 SOL — creating
         # another buffer on an empty wallet just locks more rent.
         shell: bash
-        env:
-          ABANDONED_BUFFERS: "B86okiZ9msMjKyQVpTApb9AKwFFw95tCL4p5VUUS4AGu FhWBXimZTC5ok2uNR2tBtzTBcgg88FW3AqepUf67PMTg"
         run: |
           set -Eeuo pipefail
           {
@@ -110,8 +108,12 @@ jobs:
             echo "--- buffers visible to deployer ---"
             solana program show --buffers \
               --buffer-authority config/ci/deployer.json \
-              -u "$SOLANA_RPC_URL" || true
-            for buf in $ABANDONED_BUFFERS; do
+              -u "$SOLANA_RPC_URL" | tee /tmp/buffers.txt || true
+            echo "--- closing all listed buffers ---"
+            grep -oE '\b[1-9A-HJ-NP-Za-km-z]{43,44}\b' /tmp/buffers.txt 2>/dev/null \
+              | sort -u | grep -v '^2vs2CxnQ4Xz4q8xcQzZHbXorSPyBFZmWhFa2aFG6dmSe$' || true
+            for buf in $(grep -oE '\b[1-9A-HJ-NP-Za-km-z]{43,44}\b' /tmp/buffers.txt 2>/dev/null \
+                | sort -u | grep -v '^2vs2CxnQ4Xz4q8xcQzZHbXorSPyBFZmWhFa2aFG6dmSe$' || true); do
               echo "--- closing $buf ---"
               solana program close "$buf" \
                 --buffer-authority config/ci/deployer.json \
