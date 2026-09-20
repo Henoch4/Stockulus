@@ -128,6 +128,8 @@ errors: []</span></pre>
             <tr><td>Meteora pools</td><td>Created for all three tracked assets</td></tr>
             <tr><td>Fee configs</td><td>Calm (linear) and stress (exponential 900bps) both live — regime picks between them</td></tr>
             <tr><td>Background agent</td><td>Runs a dry-run cycle every 5 minutes while the desk is served — decisions stream into the log, nothing is swapped</td></tr>
+            <tr><td>Carry backtest</td><td>60d in-sample / 30d out-of-sample, costs modeled — verdict: no edge sub-1-year (see docs/BACKTEST.md)</td></tr>
+            <tr><td>Forward record</td><td>Every approved decision grades +24h vs live spot — accumulating on the dashboard</td></tr>
             <tr><td>End-to-end trade</td><td>Proven once, live — signal → risk gate → on-chain log → real swap</td></tr>
             <tr><td>Vault deposits</td><td>Not yet open — waiting on the share-accounting fix above</td></tr>
             <tr><td>Fee buyback + supporters wall</td><td>Live and tracked, currently at zero — no fees earned yet</td></tr>

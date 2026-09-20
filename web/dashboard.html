@@ -216,6 +216,12 @@
 <script>
   var feed = document.getElementById('feed');
 
+  // Progressive disclosure: details collapse to one line, expand on tap.
+  feed.addEventListener('click', function (e) {
+    var item = e.target.closest('.feed-item');
+    if (item) item.classList.toggle('expanded');
+  });
+
   function addEntry(e) {
     var el = document.createElement('div');
     el.className = 'feed-item new';
