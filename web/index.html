@@ -7,7 +7,7 @@
 <meta name="description" content="Stockulus buys tokenized stocks when they're structurally cheap to hold, checks every trade against limits it can't override, and writes the decision on-chain before it trades.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@700;800;900&family=Newsreader:opsz,wght@6..72,500;6..72,600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
 </head>
 <body>
@@ -33,31 +33,39 @@
 </header>
 
 <main>
-  <section class="hero-scene">
-    <div class="hero-orb"></div>
-    <div class="hero-moon"></div>
-    <div class="hero-content">
-      <div class="hero-headline">
-        <h1>The gap is the strategy.</h1>
-        <p class="hero-tagline">Delta-neutral carry, proven on-chain.</p>
-        <div class="hero-marks">
-          <span class="m"><span class="dot"></span>Signal</span>
-          <span class="m"><span class="dot"></span>Risk gate</span>
-          <span class="m"><span class="dot"></span>Audit trail</span>
-          <span class="m"><span class="dot"></span>Vault</span>
-        </div>
+  <section class="wrap hero">
+    <div class="hero-copy">
+      <h1>The gap is the strategy.</h1>
+      <p class="hero-sub">A tokenized stock trades around the clock; the real market it tracks doesn't. That mismatch opens a small, persistent gap. Stockulus holds it, checks every trade against limits it can't override, and writes the decision on-chain before it fires.</p>
+      <div class="hero-actions btn-row">
+        <a href="dashboard.html" class="btn btn-primary">Open the desk</a>
+        <a href="system.html" class="btn btn-ghost">Read the system</a>
       </div>
-      <div class="hero-blurb">
-        <p>Stockulus buys tokenized stocks when they're structurally cheap to hold, checks every trade against limits it can't override, and writes the decision on-chain before it trades.</p>
-        <div class="btn-row">
-          <a href="dashboard.html" class="btn btn-primary">Open the desk</a>
-          <a href="system.html" class="btn btn-ghost">Read the system</a>
-        </div>
-      </div>
+    </div>
+    <div class="hero-figure">
+      <svg class="hero-chart" viewBox="0 0 560 260" xmlns="http://www.w3.org/2000/svg">
+        <line class="grid-line" x1="0" y1="60" x2="560" y2="60"/>
+        <line class="grid-line" x1="0" y1="130" x2="560" y2="130"/>
+        <line class="grid-line" x1="0" y1="200" x2="560" y2="200"/>
+
+        <path class="gap-fill chart-fade" d="M 30.0,210.0 48.5,207.1 67.0,203.4 85.6,206.6 104.1,211.3 122.6,217.2 141.1,212.2 159.6,219.0 178.1,211.6 196.7,212.4 215.2,207.1 233.7,199.6 252.2,203.6 270.7,200.3 289.3,204.2 307.8,202.2 326.3,201.9 344.8,205.1 363.3,200.0 381.9,199.8 400.4,200.6 418.9,193.0 437.4,195.5 455.9,191.9 474.4,191.0 493.0,184.5 511.5,180.2 530.0,184.6 L 530.0,222.6 511.5,218.5 493.0,217.7 474.4,223.9 455.9,227.1 437.4,227.6 418.9,224.7 400.4,228.6 381.9,228.3 363.3,226.2 344.8,228.7 326.3,223.5 307.8,224.3 289.3,226.3 270.7,222.5 252.2,220.4 233.7,216.2 215.2,220.9 196.7,227.1 178.1,228.4 159.6,230.2 141.1,225.7 122.6,225.1 104.1,219.9 85.6,214.4 67.0,209.1 48.5,209.8 30.0,212.0 Z"/>
+
+        <polyline class="spot-line chart-draw" points="30.0,212.0 48.5,209.8 67.0,209.1 85.6,214.4 104.1,219.9 122.6,225.1 141.1,225.7 159.6,230.2 178.1,228.4 196.7,227.1 215.2,220.9 233.7,216.2 252.2,220.4 270.7,222.5 289.3,226.3 307.8,224.3 326.3,223.5 344.8,228.7 363.3,226.2 381.9,228.3 400.4,228.6 418.9,224.7 437.4,227.6 455.9,227.1 474.4,223.9 493.0,217.7 511.5,218.5 530.0,222.6"/>
+        <polyline class="token-line chart-draw" points="30.0,210.0 48.5,207.1 67.0,203.4 85.6,206.6 104.1,211.3 122.6,217.2 141.1,212.2 159.6,219.0 178.1,211.6 196.7,212.4 215.2,207.1 233.7,199.6 252.2,203.6 270.7,200.3 289.3,204.2 307.8,202.2 326.3,201.9 344.8,205.1 363.3,200.0 381.9,199.8 400.4,200.6 418.9,193.0 437.4,195.5 455.9,191.9 474.4,191.0 493.0,184.5 511.5,180.2 530.0,184.6"/>
+
+        <line class="callout-line chart-fade" x1="530" y1="184.6" x2="530" y2="222.6"/>
+        <circle class="chart-fade" cx="530" cy="184.6" r="2.5" fill="#DFFF5C"/>
+        <circle class="chart-fade" cx="530" cy="222.6" r="2.5" fill="#8A91A6"/>
+
+        <text class="lbl chart-fade" x="34" y="196">spot (AAPL)</text>
+        <text class="lbl-strong chart-fade" x="34" y="192">AAPLx</text>
+        <text class="lbl-strong chart-fade" x="472" y="172">+9 bps basis</text>
+        <text class="lbl chart-fade" x="472" y="240">74 bps carry, annualized</text>
+      </svg>
     </div>
   </section>
 
-  <section class="wrap" style="padding-top:56px">
+  <section class="wrap" style="padding-top:64px">
     <div class="stats">
       <div class="stat"><div class="v"><span>$100</span></div><div class="l">Largest single position it will take</div></div>
       <div class="stat"><div class="v"><span>70%</span></div><div class="l">Minimum confidence required to trade</div></div>
@@ -67,8 +75,7 @@
   </section>
 
   <section class="wrap section-pad">
-    <div class="kicker">How it stays neutral</div>
-    <h2 style="font-size:clamp(26px,3.4vw,38px);max-width:20ch">Four steps between an idea and a real trade — in order, every time.</h2>
+    <h2 style="font-size:clamp(26px,3.4vw,38px);max-width:22ch">How it stays neutral: four steps between an idea and a real trade, in order, every time.</h2>
     <div class="pipeline">
       <div class="step">
         <div class="idx">1</div>
@@ -100,7 +107,6 @@
   <section class="wrap section-pad">
     <div class="split">
       <div>
-        <div class="kicker">Why this exists</div>
         <h2>Carry, not conviction.</h2>
       </div>
       <div class="split-body">
@@ -110,11 +116,13 @@
     </div>
   </section>
 
-  <section class="wrap section-pad" style="padding-bottom:0">
-    <div class="card" style="text-align:center;padding:56px 32px">
-      <h2 style="font-size:clamp(24px,3vw,32px)">See it running.</h2>
-      <p class="lede" style="margin:16px auto 28px;max-width:52ch;text-align:center">The desk shows the real devnet deployment — the actual programs, the actual proven trade, the actual limits — not a mockup.</p>
-      <div class="btn-row" style="justify-content:center">
+  <section class="band">
+    <div class="wrap band-row">
+      <div>
+        <h2>See it running.</h2>
+        <p>The desk shows the real devnet deployment — the actual programs, the actual proven trade, the actual limits — not a mockup.</p>
+      </div>
+      <div class="btn-row">
         <a href="dashboard.html" class="btn btn-primary">Open the desk</a>
       </div>
     </div>
