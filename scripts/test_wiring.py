@@ -20,6 +20,19 @@ class FakeXStocks:
         pass
 
 
+class FakeBitget:
+    """Same price as FakeXStocks -> zero divergence, offline, never blocks."""
+
+    async def get_spot(self, asset):
+        return {"price": 180.0, "source": "fake-bitget"}
+
+    async def get_sol_usd(self):
+        return {"available": False, "source": "fake-bitget"}
+
+    async def close(self):
+        pass
+
+
 async def main():
     counters = DurableDailyCounters(path=os.path.join(os.path.dirname(__file__), "_test_risk.json"), enabled=True)
     rg = RiskGate(
@@ -33,7 +46,7 @@ async def main():
         xstocks_client=FakeXStocks(), meteora_executor=me,
         risk_gate=rg, dry_run=True, max_position_usd=100,
         agent_id="t", integrity_gate=DataIntegrityGate(30.0),
-        regime_window=50,
+        regime_window=50, bitget_client=FakeBitget(),
     )
     print("agent instantiated OK")
     print("active patterns:", ag.pattern_registry.get_active_patterns())

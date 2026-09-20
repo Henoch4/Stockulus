@@ -296,8 +296,11 @@ Docs: https://clawpump.tech, dashboard. Implemented in `clawpump_client.py` (DON
 
 ```
 xstocks.get_spot_price (live) → carry signal (live div proxy) → regime → curator
-  → data_integrity → risk_gate.check_order (pool allowlist) → audit log_decision (BLOCK on fail)
-  → USD→wSOL conversion → meteora.swap → audit record_execution → fee-ledger append
+  → data_integrity (+ Bitget rToken cross-check: divergence over
+     BITGET_DIVERGENCE_BPS blocks the asset, missing feed never blocks)
+  → risk_gate.check_order (pool allowlist) → audit log_decision (BLOCK on fail)
+  → USD→wSOL conversion (Pyth Hermes → Bitget SOLUSDT → SOL_PRICE_USD → 150)
+  → meteora.swap → audit record_execution → fee-ledger append
 ```
 Proven 2026-09-17: init `fbD3Sx…` + params + decision `dec_0ff8e8bb4d80` + swap `AvubGL…` (+29,699 dAAPLx).
 Bugs banked: audit `package_id`, DBC pool env resolution, dry-run default true, executor ts_dir.

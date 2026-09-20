@@ -128,6 +128,33 @@ class DataIntegrityGate:
             )
         return IntegrityResult(Severity.OK, [])
 
+    def check_venue_divergence(self, symbol: str, prices: dict,
+                                   threshold_bps: float = 100.0) -> IntegrityResult:
+        """Cross-venue spot check (second opinion, e.g. xStocks vs Bitget).
+
+        Fail-OPEN on a missing second opinion (single venue = no cross-check,
+        never a block); fail-CLOSED on disagreement: over threshold ->
+        HARD BLOCK, over half threshold -> SOFT warning. Mirrors the
+        staleness aging pattern in check_market_data.
+        """
+        known = {v: p for v, p in prices.items()
+                 if isinstance(p, (int, float)) and not math.isnan(p) and p > 0}
+        if len(known) < 2:
+            return IntegrityResult(
+                Severity.OK,
+                [f"{symbol}: single venue ({'/'.join(known) or 'none'}) -> no cross-check (not a block)"],
+            )
+        vals = list(known.values())
+        mid = sum(vals) / len(vals)
+        div_bps = (max(vals) - min(vals)) / mid * 10000.0
+        detail = (f"{symbol}: venue spread {div_bps:.1f}bps "
+                  f"({', '.join(f'{v}={p}' for v, p in sorted(known.items()))})")
+        if div_bps > threshold_bps:
+            return IntegrityResult(Severity.HARD_BLOCK, [detail + " -> HARD BLOCK"])
+        if div_bps > threshold_bps * 0.5:
+            return IntegrityResult(Severity.SOFT_WARNING, [detail + " -> soft warning"])
+        return IntegrityResult(Severity.OK, [])
+
     def combine(self, *results: IntegrityResult) -> IntegrityResult:
         """Worst-severity wins; every reason is preserved."""
         all_reasons = []

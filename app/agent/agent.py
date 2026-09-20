@@ -39,6 +39,7 @@ from .data_integrity import DataIntegrityGate, IntegrityResult
 from .audit_trail import AuditLog
 from .regime_hmm import infer_regime_simple, dbc_action_for_regime
 from .pyth import PythClient
+from .bitget import BitgetClient
 from .stock_carry import tokenized_stock_carry_signal, vault_9010_allocation
 from .dashboard import Dashboard
 
@@ -247,6 +248,7 @@ class AutonomousTradingAgent:
         expected_equity: float | None = None,
         regime_window: int = 50,
         pyth_client: PythClient | None = None,
+        bitget_client: BitgetClient | None = None,
     ):
         self.xstocks = xstocks_client
         self.meteora = meteora_executor
@@ -264,6 +266,9 @@ class AutonomousTradingAgent:
         self.expected_equity = expected_equity
         # Pyth SOL/USD (keyed Hermes; keyless = env fallback, see pyth.py).
         self.pyth = pyth_client or PythClient()
+        # Bitget public-data second opinion (keyless, see bitget.py).
+        self.bitget = bitget_client or BitgetClient()
+        self._last_divergence: dict = {}
 
         # Pattern system
         self.pattern_registry = PatternRegistry()
@@ -397,10 +402,31 @@ class AutonomousTradingAgent:
     async def _process_asset(self, asset: str, market_data: dict, cycle_id: str) -> dict:
         out = {"signals": [], "decisions": [], "executions": [], "errors": []}
 
-        # Integrity check
+        # Integrity check (feed staleness + cross-venue divergence)
         if self.integrity_gate:
             tick = type('obj', (object,), {"timestamp": market_data[asset]["timestamp"], "funding_rate": market_data[asset]["funding_rate"]})
             integrity = self.integrity_gate.check_market_data({asset: tick}, time.time())
+            # Second opinion: Bitget rToken spot vs xStocks primary.
+            # Missing second opinion never blocks (fail-open); disagreement
+            # over BITGET_DIVERGENCE_BPS (default 100) blocks (fail-closed).
+            if self.bitget is not None:
+                bq = await self.bitget.get_spot(asset)
+                xs = market_data[asset].get("spot_price")
+                bp = bq.get("price")
+                div = self.integrity_gate.check_venue_divergence(
+                    asset, {"xstocks": xs, "bitget": bp},
+                    threshold_bps=float(_os.getenv("BITGET_DIVERGENCE_BPS", "100") or 100),
+                )
+                both = [p for p in (xs, bp) if isinstance(p, (int, float)) and p > 0]
+                self._last_divergence[asset] = {
+                    "div_bps": round((max(both) - min(both)) / (sum(both) / 2) * 10000.0, 1)
+                    if len(both) == 2 else None,
+                    "xstocks": xs,
+                    "bitget": bp,
+                    "severity": div.severity.value,
+                    "at": time.time(),
+                }
+                integrity = self.integrity_gate.combine(integrity, div)
             if integrity.blocks_trading:
                 out["errors"].append(f"Integrity blocked {asset}: {integrity.reasons}")
                 return out
@@ -471,10 +497,14 @@ class AutonomousTradingAgent:
         if not self.dry_run:
             try:
                 # order.size is USD notional; DBC swap takes QUOTE-token units.
-                # SOL price: Pyth Hermes when keyed, else SOL_PRICE_USD env, else 150.
-                sol_price, price_source = await self.pyth.sol_usd_with_fallback(
-                    float(_os.getenv("SOL_PRICE_USD", "150.0") or 150.0)
-                )
+                # SOL price chain: Pyth Hermes (keyed) -> Bitget public
+                # spot (keyless) -> SOL_PRICE_USD env -> 150.0.
+                env_fallback = float(_os.getenv("SOL_PRICE_USD", "150.0") or 150.0)
+                sol_price, price_source = await self.pyth.sol_usd_with_fallback(env_fallback)
+                if price_source != "pyth-hermes" and self.bitget is not None:
+                    bq = await self.bitget.get_sol_usd()
+                    if bq.get("available") and bq.get("price", 0) > 0:
+                        sol_price, price_source = float(bq["price"]), "bitget-spot"
                 logger.debug(f"SOL/USD {sol_price} via {price_source}")
                 amount_quote = float(order.size) / sol_price if sol_price > 0 else 0.0
                 swap_result = self.meteora.swap(

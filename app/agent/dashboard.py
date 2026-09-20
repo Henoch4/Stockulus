@@ -218,6 +218,11 @@ class Dashboard:
             "decisions": recent,
         }
 
+    def get_venue_spread(self) -> dict:
+        """Cross-venue spot spread (xStocks vs Bitget) from the integrity gate."""
+        last = dict(getattr(self.agent, "_last_divergence", {}))
+        return {"symbols": last}
+
 
 # ─── FastAPI/HTTP endpoint helper (optional) ───
 
@@ -257,6 +262,10 @@ def create_dashboard_routes(app, dashboard: Dashboard):
     @app.get("/metrics/decisions")
     async def decision_metrics():
         return dashboard.get_recent_decisions()
+
+    @app.get("/metrics/venue")
+    async def venue_metrics():
+        return dashboard.get_venue_spread()
 
     @app.get("/metrics/fees")
     async def fee_metrics():
