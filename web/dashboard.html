@@ -79,6 +79,7 @@
       <span class="mono" style="font-size:12.5px;color:var(--slate-dim)">Written on-chain before every trade</span>
     </div>
     <div class="feed" id="feed"></div>
+    <div id="outcomes" class="mono" style="margin-top:14px;font-size:12.5px;color:var(--slate-dim)">Outcomes: accumulating — decisions grade +24h after approval.</div>
   </section>
 
   <section class="wrap section-pad">
@@ -309,6 +310,21 @@
   function fmtEpoch(ts) {
     return new Date(ts * 1000).toTimeString().slice(0, 8) + ' UTC (live)';
   }
+  function loadOutcomes() {
+    fetch('metrics/outcomes').then(function (r) {
+      if (!r.ok) throw new Error('no outcomes');
+      return r.json();
+    }).then(function (o) {
+      var el = document.getElementById('outcomes');
+      if (!el) return;
+      if (!o.graded) {
+        el.textContent = 'Outcomes: accumulating — decisions grade +24h after approval.';
+        return;
+      }
+      var avg = (o.avg_bps >= 0 ? '+' : '') + o.avg_bps + 'bps';
+      el.textContent = 'Outcomes: ' + o.graded + ' graded · avg ' + avg + ' · ' + o.wins + 'W/' + o.losses + 'L — forward record, graded against live spot.';
+    }).catch(function () {});
+  }
   function loadDecisions() {
     fetch('metrics/decisions').then(function (r) {
       if (!r.ok) throw new Error('no decisions');
@@ -331,7 +347,7 @@
   fetch('metrics/all').then(function (r) {
     if (!r.ok) throw new Error('no metrics');
     return r.json();
-  }).then(function (m) { applyMetrics(m); loadDecisions(); }).catch(function () {
+  }).then(function (m) { applyMetrics(m); loadDecisions(); loadOutcomes(); }).catch(function () {
     // Offline: clearly-labeled demo simulation only.
     var demoQueue = [
       { asset: 'TSLAx', conf: 82, detail: 'Basis 12bps, carry 61bps annualized', verdict: 'Approved' },
@@ -357,7 +373,7 @@
     fetch('metrics/all').then(function (r) {
       if (!r.ok) throw new Error('no metrics');
       return r.json();
-    }).then(function (m) { applyMetrics(m); loadDecisions(); }).catch(function () {});
+    }).then(function (m) { applyMetrics(m); loadDecisions(); loadOutcomes(); }).catch(function () {});
   }, 30000);
 </script>
 </body>

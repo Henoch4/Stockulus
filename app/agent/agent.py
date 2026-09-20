@@ -491,6 +491,7 @@ class AutonomousTradingAgent:
             "signal": ensemble_sig.direction,
             "confidence_bps": ensemble_sig.confidence_bps,
             "size_usd": float(order.size),
+            "entry_price": ensemble_sig.entry_price or 0,
         })
 
         # Execute via Meteora DBC (skip in dry_run)
@@ -630,7 +631,14 @@ class AutonomousTradingAgent:
                 "signal": d.get("signal"),
                 "confidence_bps": d.get("confidence_bps"),
                 "size_usd": d.get("size_usd"),
+                "entry_price": d.get("entry_price") or 0,
             })
+        # 5. Grade matured decisions against current spot (forward record)
+        from .grading import grade_matured
+        grade_matured(
+            list(self._recent_decisions), market_data,
+            float(_os.getenv("GRADE_HORIZON_H", "24") or 24) * 3600.0,
+        )
 
         return result
 

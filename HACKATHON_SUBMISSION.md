@@ -117,6 +117,9 @@ User deposits USDC → TradingVault mints shares
 | Vault timelock guardrail | ✅ | Immediate re-attest rejected on-chain (expected-fail probe) |
 | Vault delta-cap guardrail | ✅ | +50% attestation rejected on-chain (expected-fail probe) |
 | Vault withdraw to zero | ✅ | [tx](https://solscan.io/tx/3Rf2BHV1Q97U1MdhK4BeZjJUjYwc3neEXouDkejk7Q6KMKn4eiM8QX4LZAfEWUjVgdZ4v55hMoFDr4yFkzcSCP1E?cluster=devnet) (assets 0, shares 0) |
+| Carry backtest (60d IS / 30d OOS) | ✅ | `docs/BACKTEST.md` — honest negative: carry ~150bps/yr can't clear turnover at these horizons; breakeven ≈ 1yr hold |
+| Decision grading (forward record) | ✅ infra live, accumulating | Every approved decision grades +24h vs live spot → `config/outcomes.jsonl` + `/metrics/outcomes` |
+| Bitget rToken cross-check | ✅ | Keyless second opinion on xStocks spot; divergence over 100bps blocks the asset (`app/agent/bitget.py`) |
 | Clawpump agent | ✅ live / ⏳ token | Agent `756d9f58-…` live; STCKLS launch pending ~0.15 SOL funding |
 
 **Honest disclosures:** demo mints (`dAAPLx`) mirror xStocks decimals but are NOT Backed equity (no xStocks exist on devnet — verified on-chain); pools are thin (devnet dust liquidity); the vault loop ran on a mock SPL USDC (`9K4iVBL1YuqZvZAR36Bw4s6uSeB7K9SeBAoqKAZ9ZrPE`, 6dp) since devnet has no Circle USDC — same Token program mainnet USDC uses; mainnet needs the transfer-hook DBC path for real xStocks (transferHook/pausable extensions confirmed on mainnet AAPLx). Vault program upgraded in place 2026-09-19 (slot 500668814) to create its token account on first deposit and enforce the attestation timelock; program ID unchanged.

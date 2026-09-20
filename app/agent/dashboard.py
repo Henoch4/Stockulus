@@ -223,6 +223,14 @@ class Dashboard:
         last = dict(getattr(self.agent, "_last_divergence", {}))
         return {"symbols": last}
 
+    def get_outcomes(self) -> dict:
+        """Graded decision outcomes — the forward record (docs/BACKTEST.md)."""
+        from .grading import read_outcomes, summarize
+        records = read_outcomes()
+        summary = summarize(records)
+        summary["recent"] = records[-10:]
+        return summary
+
 
 # ─── FastAPI/HTTP endpoint helper (optional) ───
 
@@ -266,6 +274,10 @@ def create_dashboard_routes(app, dashboard: Dashboard):
     @app.get("/metrics/venue")
     async def venue_metrics():
         return dashboard.get_venue_spread()
+
+    @app.get("/metrics/outcomes")
+    async def outcome_metrics():
+        return dashboard.get_outcomes()
 
     @app.get("/metrics/fees")
     async def fee_metrics():
